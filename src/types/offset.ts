@@ -1,4 +1,4 @@
 export enum Offset {
   I32,
-  I64
+  I64,
 }

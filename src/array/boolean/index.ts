@@ -5,10 +5,20 @@ import { PhysicalType } from "../../datatypes/physical_type";
 import { ArrowError } from "../../error";
 
 export class BooleanVec extends Vec {
+  protected typeId = "BooleanVec";
+
+  __data_type: DataType;
   #validity: Bitmap | null;
   #values: Bitmap;
 
-  public static try_new(
+  private constructor(data_type: DataType, validity, values) {
+    super();
+    this.__data_type = data_type;
+    this.#validity = validity;
+    this.#values = values;
+  }
+
+  static try_new(
     data_type: DataType,
     values: Bitmap,
     validity: Bitmap | null
@@ -26,7 +36,8 @@ export class BooleanVec extends Vec {
     }
     return new BooleanVec(data_type, validity, values);
   }
-  public static from_data(
+
+  static from_data(
     data_type: DataType,
     values: Bitmap,
     validity: Bitmap | null
@@ -38,24 +49,29 @@ export class BooleanVec extends Vec {
       return val;
     }
   }
-  public static new_empty(data_type: DataType) {
+
+  static new_empty(data_type: DataType) {
     return new BooleanVec(data_type, Bitmap.empty(), null);
   }
 
-  public static new_null(data_type: DataType, length: number) {
+  static new_null(data_type: DataType, length: number) {
     return new BooleanVec(data_type, Bitmap.empty(), null);
   }
 
-  private constructor(data_type: DataType, validity, values) {
-    super(data_type);
-    this.#validity = validity;
-    this.#values = values;
+  len(): number {
+    return this.#values.length;
   }
-  public validity() {
+
+  validity() {
     return this.#validity;
   }
 
-  public value(idx: number) {
+  slice(offset: number, length: number): ThisType<this> {
+    let validity = this.#validity?.slice_unchecked(offset, length);
+    let values = this.#values.slice_unchecked(offset, length);
+    return new BooleanVec(this.__data_type, validity, values);
+  }
+  value(idx: number) {
     return this.#values.get_bit(idx);
   }
 }

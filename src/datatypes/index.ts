@@ -3,6 +3,7 @@ import { PrimitiveType } from "../types/index";
 import { FunctionalEnum } from "../util/enum_impl";
 import { IntegerType, PhysicalType } from "./physical_type";
 import util from "util";
+import { Field } from "jsarrow/datatypes/field";
 export class UnionMode extends FunctionalEnum {
   static #identity = "UnionMode";
   static #variants = {
@@ -149,16 +150,21 @@ const __DataTypeVariants = {
   12: "Float64",
   13: "Utf8",
   14: "LargeUtf8",
-  15([int, dtype, bool]) {
+  15([field]) {
     return {
-      Dictionary: {
-        key: int,
-        value: dtype,
-        sorted: bool,
+      List: {
+        field,
       },
     };
   },
-  16([ext, dtype, bool]) {
+  16([field]) {
+    return {
+      LargeList: {
+        field,
+      },
+    };
+  },
+  17([ext, dtype, bool]) {
     return {
       Extension: {
         key: ext,
@@ -182,15 +188,27 @@ const __DataTypeVariants = {
   Float64: { inner: 12 },
   Utf8: { inner: 13 },
   LargeUtf8: { inner: 14 },
-  Dictionary(int?: IntegerType, dtype?: DataType, bool?: boolean) {
+  List(field?: Field) {
     return {
       inner: 15,
+      data: [field],
+    };
+  },
+  LargeList(field?: Field) {
+    return {
+      inner: 16,
+      data: [field],
+    };
+  },
+  Dictionary(int?: IntegerType, dtype?: DataType, bool?: boolean) {
+    return {
+      inner: 17,
       data: [int, dtype, bool],
     } as const;
   },
   Extension: (ext?: string, dtype?: DataType, metadata?: string) => {
     return {
-      inner: 16,
+      inner: 18,
       data: [ext, dtype, metadata],
     } as const;
   },
@@ -251,6 +269,13 @@ export class DataType extends FunctionalEnum {
   public static Utf8 = new DataType(__DataTypeVariants.Utf8);
   /** A variable-length UTF-8 encoded string whose offsets are represented as [`i64`]. */
   public static LargeUtf8 = new DataType(__DataTypeVariants.LargeUtf8);
+  public static List(fld: Field) {
+    return new DataType(__DataTypeVariants.List(fld));
+  }
+  /** A variable-length UTF-8 encoded string whose offsets are represented as [`i64`]. */
+  public static LargeList(fld: Field) {
+    return new DataType(__DataTypeVariants.LargeList(fld));
+  }
   /**
    *  A dictionary encoded array (`key_type`, `value_type`), where
    * each array element is an index of `key_type` into an
@@ -322,6 +347,13 @@ export class DataType extends FunctionalEnum {
         },
         [__DataTypeVariants.LargeUtf8.inner]() {
           return PhysicalType.LargeUtf8;
+        },
+
+        [__DataTypeVariants.List().inner]() {
+          return PhysicalType.List;
+        },
+        [__DataTypeVariants.LargeList().inner]() {
+          return PhysicalType.LargeList;
         },
         [__DataTypeVariants.Dictionary().inner]() {
           return PhysicalType.Dictionary(inner.data[0]);

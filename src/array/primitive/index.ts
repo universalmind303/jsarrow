@@ -1,9 +1,10 @@
+import assert from "assert";
 import { Vec } from "../../array/index";
 import { Bitmap } from "../../bitmap/immutable";
 import { DataType } from "../../datatypes/index";
 import { PhysicalType } from "../../datatypes/physical_type";
 import { ArrowError } from "../../error";
-import { NativeArrayType } from "../../interfaces";
+import { NativeArrayType, TypedArray } from "../../interfaces";
 import { PrimitiveType } from "../../types/index";
 
 function check<T extends NativeArrayType>(
@@ -26,11 +27,26 @@ function check<T extends NativeArrayType>(
     );
   }
 }
-export class PrimitiveVec<T extends NativeArrayType> extends Vec {
-  #validity: Bitmap | null;
-  #values: Buffer;
+export class PrimitiveVec<T extends TypedArray> extends Vec {
+  protected typeId: string;
+  __data_type: DataType;
 
-  public static try_new<T extends NativeArrayType>(
+  #validity: Bitmap | null;
+  #values: T;
+
+  private constructor(
+    data_type: DataType,
+    values: T,
+    validity: Bitmap | null = null
+  ) {
+    super();
+    this.typeId = `PrimitiveVec<${data_type.typeId}>`;
+    this.__data_type = data_type;
+    this.#validity = validity;
+    this.#values = values;
+  }
+
+  static try_new<T extends TypedArray>(
     data_type: DataType,
     values: T,
     validity: Bitmap | null
@@ -40,7 +56,7 @@ export class PrimitiveVec<T extends NativeArrayType> extends Vec {
     return new PrimitiveVec(data_type, values, validity);
   }
 
-  public static from_array<T extends NativeArrayType>(arr: T): PrimitiveVec<T> {
+  static from_array<T extends TypedArray>(arr: T): PrimitiveVec<T> {
     let pt = PrimitiveType.inferFromArray(arr);
     let dt = DataType.from(pt);
     let values;
@@ -57,13 +73,25 @@ export class PrimitiveVec<T extends NativeArrayType> extends Vec {
     return new PrimitiveVec(dt, values);
   }
 
-  private constructor(
-    data_type: DataType,
-    values,
-    validity: Bitmap | null = null
-  ) {
-    super(data_type);
-    this.#validity = validity;
-    this.#values = values;
+  len(): number {
+    return this.#values.length;
+  }
+  validity() {
+    return this.#validity;
+  }
+  value(i: number): number {
+    return this.#values[i as any] as any;
+  }
+  slice(offset: number, length: number): ThisType<this> {
+    assert(
+      offset + length <= this.len(),
+      "offset + length may not exceed length of array"
+    );
+    return this.slice_unchecked(offset, length);
+  }
+  slice_unchecked(offset, length) {
+    let validity = this.#validity?.slice_unchecked(offset, length);
+    let values = this.#values.slice(offset, length);
+    return new PrimitiveVec(this.__data_type, values, validity);
   }
 }

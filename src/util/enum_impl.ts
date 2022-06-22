@@ -53,6 +53,14 @@ export abstract class FunctionalEnum {
   get inner() {
     return this.__inner.inner;
   }
+  get typeId() {
+    let variant = toJson(this.__inner, this.#variants);
+    if (typeof variant !== "string") {
+      console.log("nested variant", variant);
+      variant = Object.keys(variant)[0];
+    }
+    return variant;
+  }
 
   equals<T extends FunctionalEnum>(other: T) {
     return (
@@ -63,7 +71,9 @@ export abstract class FunctionalEnum {
   }
 
   toString() {
-    return JSON.stringify(toJson(this.__inner, this.#variants));
+    let variant = this.typeId;
+
+    return `${this.identity}.${variant}`;
   }
 
   toJSON() {
@@ -78,7 +88,9 @@ export abstract class FunctionalEnum {
     return this.toJSON();
   }
 
-  get [Symbol.toStringTag]() {
-    return this.identity;
-  }
+  protected static [Symbol.toStringTag] = (() => {
+    return {
+      hello: "ello",
+    };
+  })();
 }

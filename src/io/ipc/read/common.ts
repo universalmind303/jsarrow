@@ -5,14 +5,10 @@ import {
   MetadataVersion,
   RecordBatch as RecordBatchRef,
 } from "jsarrow/src/fb/Message";
-console.log({ MetadataVersion, RecordBatchRef });
 import { IpcSchema } from "../index";
 import { read } from "./deserialize";
 import { Dictionaries } from "./index";
 import { Reader } from "../../../util/file-reader";
-import { DataType } from "../../../datatypes/index";
-import { BooleanVec, Utf8Vec } from "../../../array/index";
-import { Offset } from "../../../types/offset";
 import { Chunk } from "jsarrow/src/chunk";
 
 export function read_record_batch(
@@ -64,6 +60,7 @@ export function read_record_batch(
       );
     });
 
-    return Chunk.create(columns);
+    const chunk = Chunk.create(columns);
+    console.log(chunk);
   }
 }

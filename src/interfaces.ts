@@ -39,7 +39,12 @@ export interface TypedArray {
    * @param end The index of the end of the array.
    */
   subarray(begin?: number, end?: number): TypedArray;
-
+  /**Returns a section of an array.
+   *
+   * @param start — The beginning of the specified portion of the array.
+   * @param end — The end of the specified portion of the array. This is exclusive of the element at the index 'end'.
+   */
+  slice(begin?: number, end?: number): TypedArray;
   /**
    * Sets a value or an array of values.
    * @param array A typed or untyped array of values to set.
@@ -50,7 +55,7 @@ export interface TypedArray {
 }
 
 export interface TypedArrayConstructor<T extends TypedArray> {
-  new(length?: number): T;
+  new (length?: number): T;
 
   /**
    * Creates an array from an array-like or iterable object.

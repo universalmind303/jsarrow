@@ -1,40 +1,34 @@
 import { Bitmap } from "../bitmap/immutable";
 import { DataType } from "../datatypes/index";
 
-export interface Vec {
-  validity(): Bitmap | null;
-  len(): number;
-  isEmpty(): boolean;
-  dataType(): DataType;
-  nullCount(): number;
-  slice(offset: number, length: number): this;
-}
-
 export abstract class Vec {
-  #data_type: DataType;
-  #length: number;
-  constructor(data_type: DataType, length?: number) {
-    this.#data_type = data_type;
-    this.#length = length ?? 0;
-  }
+  protected abstract typeId: string;
+  protected abstract __data_type: DataType;
+
+  abstract validity(): Bitmap | null;
+  abstract len(): number;
+
+  abstract slice(offset: number, length: number): ThisType<this>;
+  abstract value(i: number);
+
   get length(): number {
-    return this.#length;
-  }
-  len(): number {
-    return this.#length;
+    return this.len();
   }
   isEmpty(): boolean {
-    return this.length === 0;
+    return this.len() === 0;
+  }
+  isValid(i: number): boolean {
+    return !this.isNull(i);
   }
   dataType(): DataType {
-    return this.#data_type;
+    return this.__data_type;
   }
   cast<T extends Vec>(): T {
     return this as any as T;
   }
 
   nullCount(): number {
-    if (this.#data_type.equals(DataType.Null)) {
+    if (this.__data_type.equals(DataType.Null)) {
       return this.length;
     } else {
       return this.validity()?.null_count() ?? 0;
@@ -42,6 +36,17 @@ export abstract class Vec {
   }
   isNull(i: number): boolean {
     return this.validity()?.get_bit(i) ?? false;
+  }
+
+  toString() {
+    return `${this.typeId}(${this.length}) [...]`;
+  }
+
+  [Symbol.toStringTag]() {
+    return this.toString();
+  }
+  [Symbol.for("nodejs.util.inspect.custom")]() {
+    return `${this.typeId}(${this.length}) [ ... ]`;
   }
 }
 

@@ -8,14 +8,16 @@ import {
   Int,
   Precision,
   Type,
-} from "../../../fb/Schema";
-import { Schema as SchemaRef } from "../../../fb/File";
-import { IntegerType } from "../../../datatypes/physical_type";
-import { DataType, get_extension } from "../../../datatypes/index";
-import { IpcField, IpcSchema } from "../../../io/ipc/index";
-import { Field } from "../../../datatypes/field";
-import type { Option } from "../../../util/fp";
-import { Schema } from "../../../datatypes/schema";
+} from "jsarrow/src/fb/Schema";
+import { Schema as SchemaRef } from "jsarrow/src/fb/File";
+import { IntegerType } from "jsarrow/src/datatypes/physical_type";
+import { DataType, get_extension } from "jsarrow/src/datatypes/index";
+import { IpcField, IpcSchema } from "jsarrow/src/io/ipc/index";
+import { Field } from "jsarrow/src/datatypes/field";
+import type { Option } from "jsarrow/src/util/fp";
+import { Schema } from "jsarrow/src/datatypes/schema";
+import { ArrowError } from "jsarrow/src/error";
+
 export type Extension = Option<[string, Option<string>]>;
 export type Metadata = Record<string, string>;
 
@@ -86,6 +88,34 @@ function get_data_type(
     },
     [Type.Utf8]: () => [DataType.Utf8, IpcField.empty()],
     [Type.LargeUtf8]: () => [DataType.LargeUtf8, IpcField.empty()],
+    [Type.List]() {
+      let children_len = field.childrenLength();
+      if (!children_len) {
+        throw ArrowError.OutOfSpec("IPC: List must contain children");
+      }
+
+      let inner = field.children(0);
+      if (inner === null) {
+        throw ArrowError.OutOfSpec("IPC: List must contain one child");
+      }
+
+      let [fld, ipc_field] = deserialize_field(inner);
+      return [DataType.List(fld), { fields: [ipc_field] }];
+    },
+    [Type.LargeList]() {
+      let children_len = field.childrenLength();
+      if (!children_len) {
+        throw ArrowError.OutOfSpec("IPC: List must contain children");
+      }
+
+      let inner = field.children(0);
+      if (inner === null) {
+        throw ArrowError.OutOfSpec("IPC: List must contain one child");
+      }
+
+      let [fld, ipc_field] = deserialize_field(inner);
+      return [DataType.LargeList(fld), { fields: [ipc_field] }];
+    },
   }[type]();
 }
 

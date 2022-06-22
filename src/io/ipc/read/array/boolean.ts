@@ -13,10 +13,10 @@ export function read_boolean(
   block_offset: bigint,
   is_little_endian: boolean,
   compression: Compression | null
-): BooleanVec {
+): BooleanVec | Error {
   let field_node = field_nodes.shift();
   if (!field_node) {
-    throw ArrowError.OutOfSpec(
+    return ArrowError.OutOfSpec(
       `IPC: unable to fetch the field for ${data_type}. The file or stream is corrupted.`
     );
   }
