@@ -1,0 +1,43 @@
+{
+  "exclude": ["../node_modules"],
+  "include": ["../src/**/*.ts"],
+  "compileOnSave": false,
+  "compilerOptions": {
+    "baseUrl": "./",
+    "rootDir": "../src",
+    "paths": {
+      "jsarrow/*": ["src/*"]
+    },
+
+    /* Basic stuff */
+    "moduleResolution": "Node",
+    "lib": ["DOM", "ESNext", "ESNext.AsyncIterable"],
+    "esModuleInterop": true,
+
+    /* Control what is emitted */
+    "declaration": true,
+    "declarationMap": true,
+    "noEmitOnError": true,
+    "removeComments": false,
+    "noErrorTruncation": true,
+    "downlevelIteration": true,
+
+    /* Create inline sourcemaps with sources */
+    "sourceMap": false,
+    "inlineSources": true,
+    "inlineSourceMap": true,
+
+    /* The most restrictive settings possible */
+    "noImplicitAny": true,
+    "noImplicitThis": true,
+    "strictPropertyInitialization": true,
+
+    "skipLibCheck": false,
+    "importHelpers": true,
+    "noEmitHelpers": true,
+    "noImplicitReturns": true,
+    "noStrictGenericChecks": false,
+    "noFallthroughCasesInSwitch": true,
+    "forceConsistentCasingInFileNames": true
+  }
+}
