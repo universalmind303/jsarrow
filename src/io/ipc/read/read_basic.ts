@@ -6,10 +6,10 @@ import { is_native_little_endian } from "../../../io/ipc/endianness";
 import { Compression, IpcBuffer, Node } from "../../../io/ipc/read/index";
 
 /**
- * 
- * 
+ *
+ *
  * @param typedArray buffer type
- * @returns returns a new TypedArray of given type filled with data from the reader. 
+ * @returns returns a new TypedArray of given type filled with data from the reader.
  */
 function read_uncompressed_buffer<T extends TypedArray>(
   typedArray: TypedArrayConstructor<T>
@@ -20,19 +20,17 @@ function read_uncompressed_buffer<T extends TypedArray>(
     length: bigint,
     is_little_endian: boolean
   ): T {
-
     let bytes = Number(length) * typedArray.BYTES_PER_ELEMENT;
     if (bytes > buffer_length) {
       throw ArrowError.OutOfSpec(`The slots of the array times the physical size must 
       be smaller or equal to the length of the IPC buffer. 
       However, this array reports ${length} slots, which, for physical type "${
-        (typedArray as any).constructor.name
+        typedArray.name
       }", corresponds to ${bytes} bytes, 
       which is larger than the buffer length ${buffer_length}",`);
     }
 
-    
-    let buffer = new typedArray(Number(length))
+    let buffer = new typedArray(Number(length));
 
     if (is_little_endian === is_native_little_endian()) {
       mutable_reader.read_exact(buffer);
@@ -67,7 +65,6 @@ export function read_buffer<T extends TypedArray>(
     is_little_endian: boolean,
     compression: Compression | null
   ) {
-
     let buf = mutable_buffers.shift();
     if (!buf) {
       throw new Error("IPC: unable to fetch a buffer. The file is corrupted.");
@@ -121,7 +118,6 @@ export function read_bitmap(
   if (bitmap instanceof Error) {
     throw bitmap;
   }
-  console.log("bitmap", bitmap);
   return bitmap;
 }
 

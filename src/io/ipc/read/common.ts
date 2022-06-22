@@ -4,7 +4,8 @@ import { ArrowError } from "../../../error";
 import {
   MetadataVersion,
   RecordBatch as RecordBatchRef,
-} from "jsarrow/fb/Message";
+} from "jsarrow/src/fb/Message";
+console.log({ MetadataVersion, RecordBatchRef });
 import { IpcSchema } from "../index";
 import { read } from "./deserialize";
 import { Dictionaries } from "./index";
@@ -12,6 +13,7 @@ import { Reader } from "../../../util/file-reader";
 import { DataType } from "../../../datatypes/index";
 import { BooleanVec, Utf8Vec } from "../../../array/index";
 import { Offset } from "../../../types/offset";
+import { Chunk } from "jsarrow/src/chunk";
 
 export function read_record_batch(
   batch: RecordBatchRef,
@@ -48,7 +50,7 @@ export function read_record_batch(
   } else {
     columns = fields.map((fld, idx) => {
       let ipc_fld = ipc_schema.fields[idx];
-      const data = read(
+      return read(
         field_nodes,
         fld,
         ipc_fld,
@@ -60,12 +62,8 @@ export function read_record_batch(
         batch.compression(),
         version
       );
-      if (data.dataType().equals(DataType.LargeUtf8)) {
-        console.log('first value = ', data.cast<Utf8Vec<Offset.I64>>().value(0));
-      }
-      console.log({ data });
-
-      return data;
     });
+
+    return Chunk.create(columns);
   }
 }

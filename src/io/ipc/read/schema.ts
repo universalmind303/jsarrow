@@ -92,26 +92,28 @@ function get_data_type(
 function deserialize_integer(int: Int): IntegerType {
   let [bit_width, is_signed] = [int.bitWidth(), int.isSigned()];
 
-  switch ([bit_width, is_signed]) {
-    case [8, true]:
-      return IntegerType.Int8;
-    case [8, false]:
-      return IntegerType.UInt8;
-    case [16, true]:
-      return IntegerType.Int16;
-    case [16, false]:
-      return IntegerType.UInt16;
-    case [32, true]:
-      return IntegerType.Int32;
-    case [32, false]:
-      return IntegerType.UInt32;
-    case [64, true]:
-      return IntegerType.Int64;
-    case [64, false]:
-      return IntegerType.UInt64;
-    default:
-      throw new Error("IPC: indexType can only be 8, 16, 32 or 64.");
+  let int_type;
+
+  if (is_signed) {
+    int_type = {
+      8: IntegerType.Int8,
+      16: IntegerType.Int16,
+      32: IntegerType.Int32,
+      64: IntegerType.Int64,
+    }[bit_width] as any;
+  } else {
+    int_type = {
+      8: IntegerType.UInt8,
+      16: IntegerType.UInt16,
+      32: IntegerType.UInt32,
+      64: IntegerType.UInt64,
+    }[bit_width] as any;
   }
+  if (!int_type) {
+    throw new Error("IPC: indexType can only be 8, 16, 32 or 64.");
+  }
+
+  return int_type;
 }
 function deserialize_field(fld: FieldRef): [Field, IpcField] {
   let metadata = read_metadata(fld);

@@ -2,7 +2,7 @@ import { TypedArray } from "../interfaces";
 
 export class Reader {
   #pos: number;
-  #buf: TypedArray;
+  #buf: Buffer;
 
   public static fromBuffer(buffer: Buffer): Reader {
     return new Reader(0, buffer);
@@ -13,12 +13,9 @@ export class Reader {
     this.#pos = 0;
   }
 
-  get byteSize() {
-    return this.#buf.BYTES_PER_ELEMENT;
-  }
 
-  get buffer() {
-    return this.#buf;
+  get bytes() {
+    return this.#buf.buffer;
   }
 
   seek(pos: number | bigint) {

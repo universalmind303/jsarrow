@@ -35,6 +35,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageDependencies": [\
             ["@types/node", "npm:17.0.42"],\
             ["flatbuffers", "npm:2.0.6"],\
+            ["module-alias", "npm:2.2.2"],\
             ["ts-node", "virtual:c21e25da92404de4f1c69e37be41cb739d0702c4be304eccbbfe450e4f0c68327c3ce2621e3583acfcb41728be2ce320d28946c673e488a9c0dc585e003f4757#npm:10.8.1"],\
             ["typescript", "patch:typescript@npm%3A4.7.3#~builtin<compat/typescript>::version=4.7.3&hash=7ad353"]\
           ],\
@@ -186,6 +187,7 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
             ["jsarrow", "workspace:."],\
             ["@types/node", "npm:17.0.42"],\
             ["flatbuffers", "npm:2.0.6"],\
+            ["module-alias", "npm:2.2.2"],\
             ["ts-node", "virtual:c21e25da92404de4f1c69e37be41cb739d0702c4be304eccbbfe450e4f0c68327c3ce2621e3583acfcb41728be2ce320d28946c673e488a9c0dc585e003f4757#npm:10.8.1"],\
             ["typescript", "patch:typescript@npm%3A4.7.3#~builtin<compat/typescript>::version=4.7.3&hash=7ad353"]\
           ],\
@@ -197,6 +199,15 @@ function $$SETUP_STATE(hydrateRuntimeState, basePath) {
           "packageLocation": "./.yarn/cache/make-error-npm-1.3.6-ccb85d9458-b86e5e0e25.zip/node_modules/make-error/",\
           "packageDependencies": [\
             ["make-error", "npm:1.3.6"]\
+          ],\
+          "linkType": "HARD"\
+        }]\
+      ]],\
+      ["module-alias", [\
+        ["npm:2.2.2", {\
+          "packageLocation": "./.yarn/cache/module-alias-npm-2.2.2-576bd37c03-4b5543f834.zip/node_modules/module-alias/",\
+          "packageDependencies": [\
+            ["module-alias", "npm:2.2.2"]\
           ],\
           "linkType": "HARD"\
         }]\

@@ -29,7 +29,6 @@ function check<T extends NativeArrayType>(
 export class PrimitiveVec<T extends NativeArrayType> extends Vec {
   #validity: Bitmap | null;
   #values: Buffer;
-  
 
   public static try_new<T extends NativeArrayType>(
     data_type: DataType,

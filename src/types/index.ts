@@ -100,14 +100,40 @@ export class PrimitiveType extends FunctionalEnum {
     return new PrimitiveType(PrimitiveType.#variants.MonthDayNano);
   }
   public static inferFromArray(arr: NativeArrayType) {
-    switch (typeof arr[0]) {
-      case "bigint":
-        return PrimitiveType.UInt64;
-      case "number":
-        return PrimitiveType.Float64;
-
-      default:
-        return null as never;
+    if (Array.isArray(arr)) {
+      switch (typeof arr[0]) {
+        case "bigint":
+          return PrimitiveType.UInt64;
+        case "number":
+          return PrimitiveType.Float64;
+        default:
+          return null as never;
+      }
+    } else {
+      switch (arr.constructor.name) {
+        case Int8Array.name:
+          return PrimitiveType.Int8;
+        case Int16Array.name:
+          return PrimitiveType.Int16;
+        case Int32Array.name:
+          return PrimitiveType.Int32;
+        case BigInt64Array.name:
+          return PrimitiveType.Int64;
+        case Uint8Array.name:
+          return PrimitiveType.UInt8;
+        case Uint16Array.name:
+          return PrimitiveType.UInt16;
+        case Uint32Array.name:
+          return PrimitiveType.UInt32;
+        case BigUint64Array.name:
+          return PrimitiveType.UInt64;
+        case Float32Array.name:
+          return PrimitiveType.Float32;
+        case Float64Array.name:
+          return PrimitiveType.Float64;
+        default:
+          throw new Error(`unknown  typed array type: ${arr.constructor.name}`);
+      }
     }
   }
   public toTypedArrayConstructor(): TypedArrayConstructor<TypedArray> {

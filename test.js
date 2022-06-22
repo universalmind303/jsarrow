@@ -6,5 +6,3 @@ function mutateArray(array) {
 }
 mutateArray(arr)
 const buf = Buffer.from("i am a big long string")
-
-console.log(buf.slice(3).toString())

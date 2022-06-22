@@ -50,7 +50,7 @@ export abstract class FunctionalEnum {
       variants instanceof Function ? variants : ({ inner }) => variants[inner];
   }
 
-  protected get inner() {
+  get inner() {
     return this.__inner.inner;
   }
 

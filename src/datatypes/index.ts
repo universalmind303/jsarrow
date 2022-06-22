@@ -276,45 +276,61 @@ export class DataType extends FunctionalEnum {
   /** the [`PhysicalType`] of this [`DataType`]. */
   toPhysicalType(): PhysicalType {
     let inner = this.__inner;
-    switch (inner.inner) {
-      case __DataTypeVariants.Null.inner:
-        return PhysicalType.Null;
-      case __DataTypeVariants.Boolean.inner:
-        return PhysicalType.Boolean;
-      case __DataTypeVariants.Int8.inner:
-        return PhysicalType.Primitive(PrimitiveType.Int8);
-      case __DataTypeVariants.Int16.inner:
-        return PhysicalType.Primitive(PrimitiveType.Int16);
-      case __DataTypeVariants.Int32.inner:
-        return PhysicalType.Primitive(PrimitiveType.Int32);
-      case __DataTypeVariants.Int64.inner:
-        return PhysicalType.Primitive(PrimitiveType.Int64);
-      case __DataTypeVariants.UInt8.inner:
-        return PhysicalType.Primitive(PrimitiveType.UInt8);
-      case __DataTypeVariants.UInt16.inner:
-        return PhysicalType.Primitive(PrimitiveType.UInt16);
-      case __DataTypeVariants.UInt32.inner:
-        return PhysicalType.Primitive(PrimitiveType.UInt32);
-      case __DataTypeVariants.UInt64.inner:
-        return PhysicalType.Primitive(PrimitiveType.UInt64);
-      case __DataTypeVariants.Float16.inner:
-        return PhysicalType.Primitive(PrimitiveType.Float16);
-      case __DataTypeVariants.Float32.inner:
-        return PhysicalType.Primitive(PrimitiveType.Float32);
-      case __DataTypeVariants.Float64.inner:
-        return PhysicalType.Primitive(PrimitiveType.Float64);
-      case __DataTypeVariants.Utf8.inner:
-        return PhysicalType.Utf8;
-      case __DataTypeVariants.LargeUtf8.inner:
-        return PhysicalType.LargeUtf8;
-      case __DataTypeVariants.Dictionary().inner:
-        return PhysicalType.Dictionary(inner.data[0]);
-      case __DataTypeVariants.Extension().inner:
-        return inner.data[1]!.toPhysicalType();
-      default:
-        // this will never happen, but TS can't know that!
-        return null as any;
-    }
+    return (
+      {
+        [__DataTypeVariants.Null.inner]() {
+          return PhysicalType.Null;
+        },
+        [__DataTypeVariants.Boolean.inner]() {
+          return PhysicalType.Boolean;
+        },
+        [__DataTypeVariants.Int8.inner]() {
+          return PhysicalType.Primitive(PrimitiveType.Int8);
+        },
+        [__DataTypeVariants.Int16.inner]() {
+          return PhysicalType.Primitive(PrimitiveType.Int16);
+        },
+        [__DataTypeVariants.Int32.inner]() {
+          return PhysicalType.Primitive(PrimitiveType.Int32);
+        },
+        [__DataTypeVariants.Int64.inner]() {
+          return PhysicalType.Primitive(PrimitiveType.Int64);
+        },
+        [__DataTypeVariants.UInt8.inner]() {
+          return PhysicalType.Primitive(PrimitiveType.UInt8);
+        },
+        [__DataTypeVariants.UInt16.inner]() {
+          return PhysicalType.Primitive(PrimitiveType.UInt16);
+        },
+        [__DataTypeVariants.UInt32.inner]() {
+          return PhysicalType.Primitive(PrimitiveType.UInt32);
+        },
+        [__DataTypeVariants.UInt64.inner]() {
+          return PhysicalType.Primitive(PrimitiveType.UInt64);
+        },
+        [__DataTypeVariants.Float16.inner]() {
+          return PhysicalType.Primitive(PrimitiveType.Float16);
+        },
+        [__DataTypeVariants.Float32.inner]() {
+          return PhysicalType.Primitive(PrimitiveType.Float32);
+        },
+        [__DataTypeVariants.Float64.inner]() {
+          return PhysicalType.Primitive(PrimitiveType.Float64);
+        },
+        [__DataTypeVariants.Utf8.inner]() {
+          return PhysicalType.Utf8;
+        },
+        [__DataTypeVariants.LargeUtf8.inner]() {
+          return PhysicalType.LargeUtf8;
+        },
+        [__DataTypeVariants.Dictionary().inner]() {
+          return PhysicalType.Dictionary(inner.data[0]);
+        },
+        [__DataTypeVariants.Extension().inner]() {
+          return inner.data[1]!.toPhysicalType();
+        },
+      }[inner.inner]() ?? null
+    );
   }
   /**
    * Returns `&self` for all but [`DataType::Extension`]. For [`DataType::Extension`],
@@ -335,29 +351,29 @@ export class DataType extends FunctionalEnum {
     const value =
       {
         [PrimitiveType.identity]: {
-          [(PrimitiveType.Int8 as any).__inner]: DataType.Int8,
-          [(PrimitiveType.Int16 as any).__inner]: DataType.Int16,
-          [(PrimitiveType.Int32 as any).__inner]: DataType.Int32,
-          [(PrimitiveType.Int64 as any).__inner]: DataType.Int64,
-          [(PrimitiveType.UInt8 as any).__inner]: DataType.UInt8,
-          [(PrimitiveType.UInt16 as any).__inner]: DataType.UInt16,
-          [(PrimitiveType.UInt32 as any).__inner]: DataType.UInt32,
-          [(PrimitiveType.UInt64 as any).__inner]: DataType.UInt64,
-          [(PrimitiveType.Float16 as any).__inner]: DataType.Float16,
-          [(PrimitiveType.Float32 as any).__inner]: DataType.Float32,
-          [(PrimitiveType.Float64 as any).__inner]: DataType.Float64,
+          [PrimitiveType.Int8.inner]: DataType.Int8,
+          [PrimitiveType.Int16.inner]: DataType.Int16,
+          [PrimitiveType.Int32.inner]: DataType.Int32,
+          [PrimitiveType.Int64.inner]: DataType.Int64,
+          [PrimitiveType.UInt8.inner]: DataType.UInt8,
+          [PrimitiveType.UInt16.inner]: DataType.UInt16,
+          [PrimitiveType.UInt32.inner]: DataType.UInt32,
+          [PrimitiveType.UInt64.inner]: DataType.UInt64,
+          [PrimitiveType.Float16.inner]: DataType.Float16,
+          [PrimitiveType.Float32.inner]: DataType.Float32,
+          [PrimitiveType.Float64.inner]: DataType.Float64,
         },
         [IntegerType.identity]: {
-          [(IntegerType.Int8 as any).__inner]: DataType.Int8,
-          [(IntegerType.Int16 as any).__inner]: DataType.Int16,
-          [(IntegerType.Int32 as any).__inner]: DataType.Int32,
-          [(IntegerType.Int64 as any).__inner]: DataType.Int64,
-          [(IntegerType.UInt8 as any).__inner]: DataType.UInt8,
-          [(IntegerType.UInt16 as any).__inner]: DataType.UInt16,
-          [(IntegerType.UInt32 as any).__inner]: DataType.UInt32,
-          [(IntegerType.UInt64 as any).__inner]: DataType.UInt64,
+          [IntegerType.Int8.inner]: DataType.Int8,
+          [IntegerType.Int16.inner]: DataType.Int16,
+          [IntegerType.Int32.inner]: DataType.Int32,
+          [IntegerType.Int64.inner]: DataType.Int64,
+          [IntegerType.UInt8.inner]: DataType.UInt8,
+          [IntegerType.UInt16.inner]: DataType.UInt16,
+          [IntegerType.UInt32.inner]: DataType.UInt32,
+          [IntegerType.UInt64.inner]: DataType.UInt64,
         },
-      }[t.identity]?.[(t as any).__inner] ?? null;
+      }[t.identity]?.[t.inner] ?? null;
     if (value === null) {
       throw new Error(`unable to convert ${t.identity} to DataType`);
     }

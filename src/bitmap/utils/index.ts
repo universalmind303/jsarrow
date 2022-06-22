@@ -9,7 +9,6 @@ export const UNSET_BIT_MASK = Uint8Array.from([
   255 - 64,
   255 - 128,
 ]);
-const x = 0xff;
 
 export function is_set(byte: number, i): boolean {
   return (byte & BIT_MASK[i]) !== 0;
@@ -32,9 +31,9 @@ export function count_zeros(
   if (offset + len / 8 === 0) {
     let buf = Buffer.from(slice, 0);
     let byte = (slice[0] >> offset) << (8 - len);
-    console.log({ buf, byte });
+    // console.log({ buf, byte });
   }
-  console.log({ slice: JSON.stringify(slice), offset, len });
+  // console.log({ slice: JSON.stringify(slice), offset, len });
   return null as any;
 }
 

@@ -28,6 +28,7 @@ export function read(
   version: MetadataVersion
 ): Vec {
   let data_type = field.datatype;
+
   let physical_type = data_type.toPhysicalType();
   return FunctionalEnum.match(
     physical_type,
@@ -47,8 +48,22 @@ export function read(
         );
       },
       Primitive(primitive: PrimitiveType) {
-        return unwrap(
+        const r = unwrap(
           read_primitive(primitive.toTypedArrayConstructor())(
+            mutable_field_nodes,
+            data_type,
+            mutable_buffers,
+            reader,
+            block_offset,
+            is_little_endian,
+            compression
+          )
+        );
+        return r;
+      },
+      Utf8(_) {
+        return unwrap(
+          read_utf8(Offset.I32)(
             mutable_field_nodes,
             data_type,
             mutable_buffers,

@@ -16,8 +16,6 @@ function read_utf8_impl(
   is_little_endian: boolean,
   compression: Compression | null
 ): Utf8Vec<Offset.I32> {
-  console.log("read_utf8_impl", data_type);
-
   let validity = read_validity(
     buffers,
     field_node,
@@ -62,6 +60,15 @@ function read_large_utf8_impl(
   is_little_endian: boolean,
   compression: Compression | null
 ): Utf8Vec<Offset.I64> {
+  console.log("read_large_utf8_impl", {
+    field_node,
+    data_type,
+    buffers,
+    reader,
+    block_offset,
+    is_little_endian,
+    compression,
+  });
   let validity = read_validity(
     buffers,
     field_node,
@@ -78,15 +85,7 @@ function read_large_utf8_impl(
     is_little_endian,
     compression
   );
-  console.log("read_large_utf8_impl", {
-    offsets,
-    // data_type,
-    // buffers,
-    // reader,
-    // block_offset,
-    // is_little_endian,
-    // compression,
-  });
+
   let last_offset = offsets[offsets.length - 1];
 
   let values = read_buffer(Int8Array)(

@@ -20,10 +20,10 @@
     "rootDir": "./",
     "paths": {
       "jsarrow": [
-        "src"
+        "./src/index.ts"
       ],
       "jsarrow/*": [
-        "src/*"
+        "./src/*",
       ],
       "arrowbuf": [
         "src/fb/org/apache/arrow/flatbuf"

@@ -4,27 +4,6 @@ import { DataType } from "../../datatypes/index";
 import { ArrowError } from "../../error";
 import { Offset } from "../../types/offset";
 
-// function isAscii(buf) {
-//   var isAscii = true;
-//   for (var i = 0, len = buf.length; i < len; i++) {
-//     if (buf[i] > 127) {
-//       isAscii = false;
-//       break;
-//     }
-//   }
-// }
-// function try_check_offsets_and_utf8<O>(offsets: O[], values: Uint8Array) {
-//   const te = new TextDecoder("ascii");
-
-//   if(isAscii(values.buffer)) {
-
-//   }
-//   const b = Buffer.from(values.buffer);
-//   const x = offsets[0];
-//   return null as any;
-// }
-// try_check_offsets_and_utf8([1, 2, 3], Uint8Array.from([1, 2, 3]));
-
 type OffsetType<O> = O extends Offset.I32 ? Int32Array : BigInt64Array;
 
 export abstract class Utf8Vec<O extends Offset> extends Vec {
@@ -45,7 +24,8 @@ export abstract class Utf8Vec<O extends Offset> extends Vec {
     values: Buffer,
     validity: Bitmap | null
   ): O extends Int32Array ? Utf8Vec<Offset.I32> : Utf8Vec<Offset.I64> {
-    if (validity && validity.length !== values.length) {
+
+    if (validity && validity.length !== offsets.length - 1) {
       throw ArrowError.OutOfSpec(
         "validity mask length must match the number of values"
       );
@@ -65,7 +45,6 @@ export abstract class Utf8Vec<O extends Offset> extends Vec {
     } else {
       return new LargeUtf8Impl(data_type, offsets, values, validity) as any;
     }
-    // return new PrimitiveVec(data_type, values, validity);
   }
   constructor(
     data_type: DataType,
@@ -78,10 +57,14 @@ export abstract class Utf8Vec<O extends Offset> extends Vec {
     this.#validity = validity;
     this.#values = values;
   }
-  value(i: number): string {
+  value(i: number): string | null {
+    if (this.#validity?.get_bit(i)) {
+      return null;
+    }
     const start = this.#offsets[i];
     const end = this.#offsets[i + 1];
     const slice = this.#values.slice(Number(start), Number(end));
+    console.log({ slice });
     return String.fromCharCode(...slice);
   }
 }
