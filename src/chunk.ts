@@ -14,7 +14,6 @@ export class Chunk<T extends Vec> {
   }
 
   public static try_new<T extends Vec>(arrays: T[]): Chunk<T> | Error {
-    console.log({ arrays });
     if (arrays.length !== 0) {
       let len = arrays[0].length;
       if (arrays.some((arr) => arr.length !== len)) {

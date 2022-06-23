@@ -31,49 +31,6 @@ export abstract class ListVec<O extends Offset> extends Vec implements Vec {
     this.#values = values;
   }
 
-  static try_new<O extends Offset>(offset: O) {
-    return function <A extends Int32Array | BigInt64Array>(
-      data_type: DataType,
-      offsets: A,
-      values: Vec,
-      validity: Bitmap | null
-    ):
-      | (O extends Offset.I32 ? ListVec<Offset.I32> : ListVec<Offset.I64>)
-      | Error {
-      if (validity && validity.length !== offsets.length - 1) {
-        return ArrowError.OutOfSpec(
-          "validity mask length must match the number of values"
-        );
-      }
-
-      const child_dtype = ListVec.get_child_field(offset, data_type).datatype;
-      let values_data_type = values.dataType();
-      if (!child_dtype.equals(values_data_type)) {
-        return ArrowError.OutOfSpec(
-          `ListArray's child's DataType must match.However, the expected DataType is ${child_dtype} while it got ${values_data_type}.`
-        );
-      }
-      if (offsets instanceof Int32Array) {
-        return new ListImpl(data_type, offsets, values, validity) as any;
-      } else {
-        return new LargeListImpl(data_type, offsets, values, validity) as any;
-      }
-    };
-  }
-
-  static create<O extends Offset>(offset: O) {
-    return function <A extends Int32Array | BigInt64Array>(
-      data_type: DataType,
-      offsets: OffsetType<A>,
-      values,
-      validity: Bitmap | null = null
-    ): O extends Int32Array ? ListVec<Offset.I32> : ListVec<Offset.I64> {
-      return unwrap(
-        ListVec.try_new(offset)(data_type, offsets, values, validity)
-      ) as any;
-    };
-  }
-
   value(i: number) {
     return null as any;
   }
@@ -107,8 +64,56 @@ export abstract class ListVec<O extends Offset> extends Vec implements Vec {
       validity
     );
   }
+}
 
-  static try_get_child(offset: Offset, data_type: DataType): Field | Error {
+export namespace ListVec {
+  export function try_new<O extends Offset>(offset: O) {
+    return function <A extends Int32Array | BigInt64Array>(
+      data_type: DataType,
+      offsets: A,
+      values: Vec,
+      validity: Bitmap | null
+    ):
+      | (O extends Offset.I32 ? ListVec<Offset.I32> : ListVec<Offset.I64>)
+      | Error {
+      if (validity && validity.length !== offsets.length - 1) {
+        return ArrowError.OutOfSpec(
+          "validity mask length must match the number of values"
+        );
+      }
+
+      const child_dtype = ListVec.get_child_field(offset, data_type).datatype;
+      let values_data_type = values.dataType();
+      if (!child_dtype.equals(values_data_type)) {
+        return ArrowError.OutOfSpec(
+          `ListArray's child's DataType must match.However, the expected DataType is ${child_dtype} while it got ${values_data_type}.`
+        );
+      }
+      if (offsets instanceof Int32Array) {
+        return new ListImpl(data_type, offsets, values, validity) as any;
+      } else {
+        return new LargeListImpl(data_type, offsets, values, validity) as any;
+      }
+    };
+  }
+
+  export function create<O extends Offset>(offset: O) {
+    return function <A extends Int32Array | BigInt64Array>(
+      data_type: DataType,
+      offsets: OffsetType<A>,
+      values,
+      validity: Bitmap | null = null
+    ): O extends Int32Array ? ListVec<Offset.I32> : ListVec<Offset.I64> {
+      return unwrap(
+        ListVec.try_new(offset)(data_type, offsets, values, validity)
+      ) as any;
+    };
+  }
+
+  export function try_get_child(
+    offset: Offset,
+    data_type: DataType
+  ): Field | Error {
     if (offset === Offset.I32) {
       return FunctionalEnum.match(
         data_type,
@@ -132,8 +137,8 @@ export abstract class ListVec<O extends Offset> extends Vec implements Vec {
     }
   }
 
-  static get_child_field(offset, data_type): Field {
-    return unwrap(this.try_get_child(offset, data_type));
+  export function get_child_field(offset, data_type): Field {
+    return unwrap(try_get_child(offset, data_type));
   }
 }
 

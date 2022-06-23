@@ -52,6 +52,7 @@ export interface TypedArray {
    */
   set(array: any, offset?: number): void;
   [index: number]: number | bigint;
+  values(): IterableIterator<number | bigint>;
 }
 
 export interface TypedArrayConstructor<T extends TypedArray> {

@@ -53,3 +53,5 @@ export abstract class Vec {
 export { BooleanVec } from "./boolean/index";
 export { NullVec } from "./null";
 export { Utf8Vec } from "./utf8";
+export { ListVec } from "./list";
+export { PrimitiveVec } from "./primitive";

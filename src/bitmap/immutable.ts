@@ -1,6 +1,7 @@
 import { count_zeros, get_bit } from "./utils/index";
 import { ArrowError } from "../error";
 import { TypedArray } from "../interfaces";
+import { BitmapIter } from "jsarrow/src/bitmap/iterator";
 
 export class Bitmap {
   #bytes: ArrayBuffer;
@@ -18,6 +19,7 @@ export class Bitmap {
   public static empty() {
     return new Bitmap(Uint8Array.from([]), 0, 0, 0);
   }
+  
   public static new_zeroed(length: number): Bitmap {
     let bytes = Uint8Array.from({ length: length * 8 });
     return new Bitmap(bytes, 0, length, 0);
@@ -44,8 +46,6 @@ export class Bitmap {
   is_empty(): boolean {
     return this.#length === 0;
   }
-  iter() {}
-
   as_slice(): [ArrayBuffer, number, number] {
     let start = this.#offset / 8;
     let len = ((this.#offset % 8) + this.#length + 7) / 8;
@@ -86,5 +86,13 @@ export class Bitmap {
       length: this.length,
       null_count: this.#null_count,
     };
+  }
+  
+  values(): BitmapIter {
+    return new BitmapIter(this.#bytes, this.#offset, this.#length);
+  }
+
+  [Symbol.iterator](): BitmapIter {
+    return this.values();
   }
 }

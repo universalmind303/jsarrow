@@ -1,4 +1,4 @@
-import { Bitmap } from "jsarrow/bitmap/immutable";
+import { Bitmap } from "jsarrow/src/bitmap/immutable";
 import { Vec } from "../array/index";
 import { DataType } from "../datatypes/index";
 import { PhysicalType } from "../datatypes/physical_type";
