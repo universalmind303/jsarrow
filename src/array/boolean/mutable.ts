@@ -1,11 +1,6 @@
 import { MutableVec } from "../mutable";
-import { zipValidity } from "../../bitmap/utils/zip_validity";
-import { IterableVector } from "../../util/iterator";
-import { Vec } from "../../array/index";
 import { Bitmap } from "../../bitmap/immutable";
 import { DataType } from "../../datatypes/index";
-import { PhysicalType } from "../../datatypes/physical_type";
-import { ArrowError } from "../../error";
 
 export class MutableBooleanVec extends MutableVec {
   protected variant = "MutableBooleanVec";

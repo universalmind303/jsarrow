@@ -1,4 +1,4 @@
-import { count_zeros, get_bit, packBools, set, setBool } from "./utils/index";
+import { count_zeros, get_bit, set } from "./utils/index";
 import { ArrowError } from "../error";
 import { BitmapIter } from "../bitmap/iterator";
 import { unwrap } from "../util/fp";

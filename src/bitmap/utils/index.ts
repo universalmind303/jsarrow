@@ -9,25 +9,7 @@ export const UNSET_BIT_MASK = [
   255 - 64,
   255 - 128,
 ] as const;
-export function packBools(values: Iterable<any>) {
-  const xs: number[] = [];
-  let i = 0,
-    bit = 0,
-    byte = 0;
-  for (const value of values) {
-    value && (byte |= 1 << bit);
-    if (++bit === 8) {
-      xs[i++] = byte;
-      byte = bit = 0;
-    }
-  }
-  if (i === 0 || bit > 0) {
-    xs[i++] = byte;
-  }
-  const b = new Uint8Array((xs.length + 7) & ~7);
-  b.set(xs);
-  return b;
-}
+
 export function is_set(byte: number, i): boolean {
   return (byte & BIT_MASK[i]) !== 0;
 }
@@ -57,13 +39,6 @@ export function set(byte, i, value) {
     return byte & UNSET_BIT_MASK[i];
   }
 }
-/** @ignore */
-export function setBool(bytes: Uint8Array, index: number, value: any) {
-  return value
-    ? !!(bytes[index >> 3] |= 1 << index % 8) || true
-    : !(bytes[index >> 3] &= ~(1 << index % 8)) && false;
-}
-/** @ignore */
 export class BitIterator<T> implements IterableIterator<T> {
   bit: number;
   byte: number;
@@ -101,13 +76,7 @@ export class BitIterator<T> implements IterableIterator<T> {
   }
 }
 
-/**
- * Compute the population count (the number of bits set to 1) for a range of bits in a Uint8Array.
- * @param vector The Uint8Array of bits for which to compute the population count.
- * @param lhs The range's left-hand side (or start) bit
- * @param rhs The range's right-hand side (or end) bit
- */
-/** @ignore */
+
 export function popcnt_bit_range(
   data: Uint8Array,
   lhs: number,
@@ -137,7 +106,6 @@ export function popcnt_bit_range(
     popcnt_array(data, lhsInside >> 3, (rhsInside - lhsInside) >> 3)
   );
 }
-/** @ignore */
 export function popcnt_array(
   arr: ArrayBufferView,
   byteOffset?: number,
