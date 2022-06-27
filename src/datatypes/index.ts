@@ -3,62 +3,67 @@ import { PrimitiveType } from "../types/index";
 import { FunctionalEnum } from "../util/enum_impl";
 import { IntegerType, PhysicalType } from "./physical_type";
 import util from "util";
-import { Field } from "jsarrow/datatypes/field";
-export class UnionMode extends FunctionalEnum {
-  static #identity = "UnionMode";
-  static #variants = {
-    Sparse: { inner: 0 },
-    Dense: { inner: 1 },
-    0: "Sparse",
-    1: "Dense",
-  } as const;
+import { Field } from "../datatypes/field";
 
-  private constructor(inner) {
-    super(inner, UnionMode.#identity, UnionMode.#variants);
+function _UnionMode(variant, data): UnionMode {
+  return new (class extends UnionMode {
+    protected variant = variant;
+    protected get inner() {
+      return data;
+    }
+  })();
+}
+
+export abstract class UnionMode extends FunctionalEnum {
+  identity = "UnionMode";
+
+  public static get Sparse() {
+    return _UnionMode("Sparse", 0);
   }
-
-  public static Sparse = new UnionMode(UnionMode.#variants.Sparse);
-  public static Dense = new UnionMode(UnionMode.#variants.Dense);
+  public static get Dense() {
+    return _UnionMode("Dense", 1);
+  }
 
   sparse(isSparse: boolean) {
     if (isSparse) {
-      return new UnionMode(UnionMode.#variants.Sparse);
+      return _UnionMode("Sparse", 0);
     } else {
-      return new UnionMode(UnionMode.#variants.Dense);
+      return _UnionMode("Dense", 1);
     }
   }
 
   isSparse() {
-    return super.inner === UnionMode.#variants.Sparse.inner;
+    return this.inner === 0;
   }
 
   isDense() {
-    return super.inner === UnionMode.#variants.Dense.inner;
+    return this.inner === 1;
   }
 }
 
-export class TimeUnit extends FunctionalEnum {
-  static #identity = "TimeUnit";
+function _TimeUnit(variant, data = null): TimeUnit {
+  return new (class extends TimeUnit {
+    protected variant = variant;
+    protected get inner() {
+      return data;
+    }
+  })();
+}
+export abstract class TimeUnit extends FunctionalEnum {
+  identity = "TimeUnit";
 
-  static #variants = {
-    0: "Second",
-    1: "Millisecond",
-    2: "Microsecond",
-    3: "Nanosecond",
-    Second: { inner: 0 },
-    Millisecond: { inner: 1 },
-    Microsecond: { inner: 2 },
-    Nanosecond: { inner: 3 },
-  } as const;
-
-  private constructor(inner) {
-    super(inner, TimeUnit.#identity, TimeUnit.#variants);
+  public static get Second() {
+    return _TimeUnit("Second");
   }
-
-  public static Second = new TimeUnit(TimeUnit.#variants.Second);
-  public static Millisecond = new TimeUnit(TimeUnit.#variants.Millisecond);
-  public static Microsecond = new TimeUnit(TimeUnit.#variants.Microsecond);
-  public static Nanosecond = new TimeUnit(TimeUnit.#variants.Nanosecond);
+  public static get Millisecond() {
+    return _TimeUnit("Millisecond");
+  }
+  public static get Microsecond() {
+    return _TimeUnit("Microsecond");
+  }
+  public static get Nanosecond() {
+    return _TimeUnit("Nanosecond");
+  }
 }
 
 /**
@@ -134,85 +139,15 @@ const inferType = (value: unknown): DataType => {
   }
 };
 
-const __DataTypeVariants = {
-  0: "Null",
-  1: "Boolean",
-  2: "Int8",
-  3: "Int16",
-  4: "Int32",
-  5: "Int64",
-  6: "UInt8",
-  7: "UInt16",
-  8: "UInt32",
-  9: "UInt64",
-  10: "Float16",
-  11: "Float32",
-  12: "Float64",
-  13: "Utf8",
-  14: "LargeUtf8",
-  15([field]) {
-    return {
-      List: {
-        field,
-      },
-    };
-  },
-  16([field]) {
-    return {
-      LargeList: {
-        field,
-      },
-    };
-  },
-  17([ext, dtype, bool]) {
-    return {
-      Extension: {
-        key: ext,
-        value: dtype,
-        sorted: bool,
-      },
-    };
-  },
-  Null: { inner: 0 },
-  Boolean: { inner: 1 },
-  Int8: { inner: 2 },
-  Int16: { inner: 3 },
-  Int32: { inner: 4 },
-  Int64: { inner: 5 },
-  UInt8: { inner: 6 },
-  UInt16: { inner: 7 },
-  UInt32: { inner: 8 },
-  UInt64: { inner: 9 },
-  Float16: { inner: 10 },
-  Float32: { inner: 11 },
-  Float64: { inner: 12 },
-  Utf8: { inner: 13 },
-  LargeUtf8: { inner: 14 },
-  List(field?: Field) {
-    return {
-      inner: 15,
-      data: [field],
-    };
-  },
-  LargeList(field?: Field) {
-    return {
-      inner: 16,
-      data: [field],
-    };
-  },
-  Dictionary(int?: IntegerType, dtype?: DataType, bool?: boolean) {
-    return {
-      inner: 17,
-      data: [int, dtype, bool],
-    } as const;
-  },
-  Extension: (ext?: string, dtype?: DataType, metadata?: string) => {
-    return {
-      inner: 18,
-      data: [ext, dtype, metadata],
-    } as const;
-  },
-} as const;
+function Dtype(variant, data: any = null): DataType {
+  return new (class extends DataType {
+    variant = variant;
+    protected get inner() {
+      return data;
+    }
+  })();
+}
+
 /**
  * The set of supported logical types in this package.
  *
@@ -224,57 +159,76 @@ const __DataTypeVariants = {
  * The [`DataType::Extension`] is special in that it augments a [`DataType`] with metadata to support custom types.
  * Use `to_logical_type` to desugar such type and return its correspoding logical type.
  **/
-export class DataType extends FunctionalEnum {
-  static #identity = "DataType";
+export abstract class DataType extends FunctionalEnum {
+  abstract variant: string;
+  protected identity = "DataType";
+  protected abstract get inner(): null | any[];
 
-  static #variants = ({ inner, data }: { inner: number; data }) => {
-    const variant = __DataTypeVariants[inner];
-    if (data) {
-      return variant(data);
-    } else {
-      return variant;
-    }
-  };
-
-  private constructor(inner: any) {
-    super(inner, DataType.#identity, DataType.#variants);
-  }
   /** Null type */
-  public static Null = new DataType(__DataTypeVariants.Null);
+  public static get Null(): DataType {
+    return Dtype("Null");
+  }
   /** `true` and `false`. */
-  public static Boolean = new DataType(__DataTypeVariants.Boolean);
+  public static get Boolean(): DataType {
+    return Dtype("Boolean");
+  }
   /** An [`i8`] */
-  public static Int8 = new DataType(__DataTypeVariants.Int8);
+  public static get Int8(): DataType {
+    return Dtype("Int8");
+  }
   /** An [`i16`] */
-  public static Int16 = new DataType(__DataTypeVariants.Int16);
+  public static get Int16(): DataType {
+    return Dtype("Int16");
+  }
   /** An [`i32`] */
-  public static Int32 = new DataType(__DataTypeVariants.Int32);
+  public static get Int32(): DataType {
+    return Dtype("Int32");
+  }
   /** An [`i64`] */
-  public static Int64 = new DataType(__DataTypeVariants.Int64);
+  public static get Int64(): DataType {
+    return Dtype("Int64");
+  }
   /** An [`u8`] */
-  public static UInt8 = new DataType(__DataTypeVariants.UInt8);
+  public static get UInt8(): DataType {
+    return Dtype("UInt8");
+  }
   /** An [`u16`] */
-  public static UInt16 = new DataType(__DataTypeVariants.UInt16);
+  public static get UInt16(): DataType {
+    return Dtype("UInt16");
+  }
   /** An [`u32`] */
-  public static UInt32 = new DataType(__DataTypeVariants.UInt32);
+  public static get UInt32(): DataType {
+    return Dtype("UInt32");
+  }
   /** An [`u64`] */
-  public static UInt64 = new DataType(__DataTypeVariants.UInt64);
+  public static get UInt64(): DataType {
+    return Dtype("UInt64");
+  }
   /** An 16-bit float */
-  public static Float16 = new DataType(__DataTypeVariants.Float16);
+  public static get Float16(): DataType {
+    return Dtype("Float16");
+  }
   /** A [`f32`] */
-  public static Float32 = new DataType(__DataTypeVariants.Float32);
+  public static get Float32(): DataType {
+    return Dtype("Float32");
+  }
   /** A [`f64`] */
-  public static Float64 = new DataType(__DataTypeVariants.Float64);
-  /** A variable-length UTF-8 encoded string whose offsets are represented as [`i32`]. */
-  public static Utf8 = new DataType(__DataTypeVariants.Utf8);
-  /** A variable-length UTF-8 encoded string whose offsets are represented as [`i64`]. */
-  public static LargeUtf8 = new DataType(__DataTypeVariants.LargeUtf8);
+  public static get Float64(): DataType {
+    return Dtype("Float64");
+  }
   public static List(fld: Field) {
-    return new DataType(__DataTypeVariants.List(fld));
+    return Dtype("List", [fld]);
+  }
+  public static LargeList(fld: Field) {
+    return Dtype("LargeList", [fld]);
+  }
+  /** A variable-length UTF-8 encoded string whose offsets are represented as [`i32`]. */
+  public static get Utf8(): DataType {
+    return Dtype("Utf8");
   }
   /** A variable-length UTF-8 encoded string whose offsets are represented as [`i64`]. */
-  public static LargeList(fld: Field) {
-    return new DataType(__DataTypeVariants.LargeList(fld));
+  public static get LargeUtf8(): DataType {
+    return Dtype("LargeUtf8");
   }
   /**
    *  A dictionary encoded array (`key_type`, `value_type`), where
@@ -291,78 +245,35 @@ export class DataType extends FunctionalEnum {
    * The `sorted` value indicates the `Dictionary` is sorted if set to `true`.
    */
   public static Dictionary(int: IntegerType, dt: DataType, sorted: boolean) {
-    return new DataType(__DataTypeVariants.Dictionary(int, dt, sorted));
+    return Dtype("Dictionary", [int, dt, sorted]);
   }
   /** Extension type. */
   public static Extension(ext: string, dt: DataType, metadata?: string) {
-    return new DataType(__DataTypeVariants.Extension(ext, dt, metadata));
+    return Dtype("Extension", [ext, dt, metadata]);
   }
-
   /** the [`PhysicalType`] of this [`DataType`]. */
   toPhysicalType(): PhysicalType {
-    let inner = this.__inner;
-    return (
-      {
-        [__DataTypeVariants.Null.inner]() {
-          return PhysicalType.Null;
-        },
-        [__DataTypeVariants.Boolean.inner]() {
-          return PhysicalType.Boolean;
-        },
-        [__DataTypeVariants.Int8.inner]() {
-          return PhysicalType.Primitive(PrimitiveType.Int8);
-        },
-        [__DataTypeVariants.Int16.inner]() {
-          return PhysicalType.Primitive(PrimitiveType.Int16);
-        },
-        [__DataTypeVariants.Int32.inner]() {
-          return PhysicalType.Primitive(PrimitiveType.Int32);
-        },
-        [__DataTypeVariants.Int64.inner]() {
-          return PhysicalType.Primitive(PrimitiveType.Int64);
-        },
-        [__DataTypeVariants.UInt8.inner]() {
-          return PhysicalType.Primitive(PrimitiveType.UInt8);
-        },
-        [__DataTypeVariants.UInt16.inner]() {
-          return PhysicalType.Primitive(PrimitiveType.UInt16);
-        },
-        [__DataTypeVariants.UInt32.inner]() {
-          return PhysicalType.Primitive(PrimitiveType.UInt32);
-        },
-        [__DataTypeVariants.UInt64.inner]() {
-          return PhysicalType.Primitive(PrimitiveType.UInt64);
-        },
-        [__DataTypeVariants.Float16.inner]() {
-          return PhysicalType.Primitive(PrimitiveType.Float16);
-        },
-        [__DataTypeVariants.Float32.inner]() {
-          return PhysicalType.Primitive(PrimitiveType.Float32);
-        },
-        [__DataTypeVariants.Float64.inner]() {
-          return PhysicalType.Primitive(PrimitiveType.Float64);
-        },
-        [__DataTypeVariants.Utf8.inner]() {
-          return PhysicalType.Utf8;
-        },
-        [__DataTypeVariants.LargeUtf8.inner]() {
-          return PhysicalType.LargeUtf8;
-        },
-
-        [__DataTypeVariants.List().inner]() {
-          return PhysicalType.List;
-        },
-        [__DataTypeVariants.LargeList().inner]() {
-          return PhysicalType.LargeList;
-        },
-        [__DataTypeVariants.Dictionary().inner]() {
-          return PhysicalType.Dictionary(inner.data[0]);
-        },
-        [__DataTypeVariants.Extension().inner]() {
-          return inner.data[1]!.toPhysicalType();
-        },
-      }[inner.inner]() ?? null
-    );
+    return {
+      Null: () => PhysicalType.Null,
+      Boolean: () => PhysicalType.Boolean,
+      Int8: () => PhysicalType.Primitive(PrimitiveType.Int8),
+      Int16: () => PhysicalType.Primitive(PrimitiveType.Int16),
+      Int32: () => PhysicalType.Primitive(PrimitiveType.Int32),
+      Int64: () => PhysicalType.Primitive(PrimitiveType.Int64),
+      UInt8: () => PhysicalType.Primitive(PrimitiveType.UInt8),
+      UInt16: () => PhysicalType.Primitive(PrimitiveType.UInt16),
+      UInt32: () => PhysicalType.Primitive(PrimitiveType.UInt32),
+      UInt64: () => PhysicalType.Primitive(PrimitiveType.UInt64),
+      Float16: () => PhysicalType.Primitive(PrimitiveType.Float16),
+      Float32: () => PhysicalType.Primitive(PrimitiveType.Float32),
+      Float64: () => PhysicalType.Primitive(PrimitiveType.Float64),
+      Utf8: () => PhysicalType.Utf8,
+      LargeUtf8: () => PhysicalType.LargeUtf8,
+      List: () => PhysicalType.List,
+      LargeList: () => PhysicalType.LargeList,
+      Dictionary: () => PhysicalType.Dictionary(this.inner![0]),
+      Extension: () => this.inner![1].toPhysicalType(),
+    }[this.variant]();
   }
   /**
    * Returns `&self` for all but [`DataType::Extension`]. For [`DataType::Extension`],
@@ -370,59 +281,18 @@ export class DataType extends FunctionalEnum {
    * Never returns the variant [`DataType::Extension`].
    */
   toLogicalType(): DataType {
-    let inner = this.__inner;
-    switch (inner.inner) {
-      case __DataTypeVariants.Extension().inner:
-        return (inner.data[1] as DataType).toLogicalType();
+    switch (this.variant) {
+      case "Extension":
+        return this.inner![1].toLogicalType();
       default:
         return this;
     }
   }
-
   public static from(t: IntegerType | PrimitiveType): DataType {
-    const value =
-      {
-        [PrimitiveType.identity]: {
-          [PrimitiveType.Int8.inner]: DataType.Int8,
-          [PrimitiveType.Int16.inner]: DataType.Int16,
-          [PrimitiveType.Int32.inner]: DataType.Int32,
-          [PrimitiveType.Int64.inner]: DataType.Int64,
-          [PrimitiveType.UInt8.inner]: DataType.UInt8,
-          [PrimitiveType.UInt16.inner]: DataType.UInt16,
-          [PrimitiveType.UInt32.inner]: DataType.UInt32,
-          [PrimitiveType.UInt64.inner]: DataType.UInt64,
-          [PrimitiveType.Float16.inner]: DataType.Float16,
-          [PrimitiveType.Float32.inner]: DataType.Float32,
-          [PrimitiveType.Float64.inner]: DataType.Float64,
-        },
-        [IntegerType.identity]: {
-          [IntegerType.Int8.inner]: DataType.Int8,
-          [IntegerType.Int16.inner]: DataType.Int16,
-          [IntegerType.Int32.inner]: DataType.Int32,
-          [IntegerType.Int64.inner]: DataType.Int64,
-          [IntegerType.UInt8.inner]: DataType.UInt8,
-          [IntegerType.UInt16.inner]: DataType.UInt16,
-          [IntegerType.UInt32.inner]: DataType.UInt32,
-          [IntegerType.UInt64.inner]: DataType.UInt64,
-        },
-      }[t.identity]?.[t.inner] ?? null;
-    if (value === null) {
-      throw new Error(`unable to convert ${t.identity} to DataType`);
-    }
-    return value;
+    return null as any;
   }
-
   public static infer(obj: any): DataType {
     return inferType(obj);
   }
 }
 
-export function get_extension(metadata: Metadata): Extension {
-  const name = metadata?.["ARROW:extension:name"];
-  if (name) {
-    let data = metadata["ARROW:extension:metadata"];
-    return [name, data];
-  } else {
-    return null;
-  }
-}

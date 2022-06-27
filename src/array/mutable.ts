@@ -1,41 +1,33 @@
 import { Bitmap } from "../bitmap/immutable";
 import { DataType } from "../datatypes/index";
 
-export abstract class Vec {
+export abstract class MutableVec {
   protected abstract variant: string;
   protected abstract __data_type: DataType;
 
-  abstract validity(): Bitmap | null;
   abstract len(): number;
-
-  abstract slice(offset: number, length: number): ThisType<this>;
-  abstract value(i: number);
+  abstract validity(): Bitmap | null;
+  abstract pushNull<T extends MutableVec>(this: T): void;
+  abstract shrinkToFit<T extends MutableVec>(this: T): void;
 
   get length(): number {
     return this.len();
   }
+
   isEmpty(): boolean {
     return this.len() === 0;
   }
+
   isValid(i: number): boolean {
     return !this.isNull(i);
   }
-  dataType(): DataType {
-    return this.__data_type;
-  }
-  cast<T extends Vec>(): T {
-    return this as any as T;
-  }
 
-  nullCount(): number {
-    if (this.__data_type.equals(DataType.Null)) {
-      return this.length;
-    } else {
-      return this.validity()?.null_count() ?? 0;
-    }
-  }
   isNull(i: number): boolean {
     return this.validity()?.get_bit(i) ?? false;
+  }
+
+  dataType(): DataType {
+    return this.__data_type;
   }
 
   toString() {
@@ -49,9 +41,3 @@ export abstract class Vec {
     return `${this.variant}(${this.length}) [ ... ]`;
   }
 }
-
-export { BooleanVec } from "./boolean/index";
-export { NullVec } from "./null";
-export { Utf8Vec } from "./utf8";
-export { ListVec } from "./list";
-export { PrimitiveVec } from "./primitive";

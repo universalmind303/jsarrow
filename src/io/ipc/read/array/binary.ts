@@ -1,5 +1,5 @@
-import { DataType } from "jsarrow/datatypes/index";
-import { Compression, IpcBuffer, Node } from "jsarrow/src/io/ipc/read/index";
+import { DataType } from "../../../../datatypes/index";
+import { Compression, IpcBuffer, Node } from "../../../../io/ipc/read/index";
 
 export function read_binary(
   field_nodes: Array<Node>,

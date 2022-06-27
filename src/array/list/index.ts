@@ -3,14 +3,14 @@ import { Bitmap } from "../../bitmap/immutable";
 import { DataType } from "../../datatypes/index";
 import { ArrowError } from "../../error";
 import { Offset } from "../../types/offset";
-import { unwrap } from "jsarrow/src/util/fp";
-import { Field } from "jsarrow/src/datatypes/field";
-import { FunctionalEnum } from "jsarrow/src/util/enum_impl";
+import { unwrap } from "../../util/fp";
+import { Field } from "../../datatypes/field";
+import { FunctionalEnum } from "../../util/enum_impl";
 
 type OffsetType<O> = O extends Offset.I32 ? Int32Array : BigInt64Array;
 
 export abstract class ListVec<O extends Offset> extends Vec implements Vec {
-  protected typeId = "ListVec";
+  protected variant = "ListVec";
   protected abstract offset: Offset;
 
   __data_type: DataType;
@@ -116,7 +116,7 @@ export namespace ListVec {
   ): Field | Error {
     if (offset === Offset.I32) {
       return FunctionalEnum.match(
-        data_type,
+        data_type ,
         {
           List([child]) {
             return child;
@@ -147,7 +147,7 @@ class ListImpl extends ListVec<Offset.I32> {
   constructor(data_type, offsets, values, validity) {
     super(data_type, offsets, values, validity);
     const child = ListVec.get_child_field(this.offset, data_type);
-    this.typeId = `ListVec<${child.datatype.typeId}>`;
+    this.variant = `ListVec<${child.datatype.variant}>`;
   }
 }
 
@@ -156,6 +156,6 @@ class LargeListImpl extends ListVec<Offset.I64> {
   constructor(data_type, offsets, values, validity) {
     super(data_type, offsets, values, validity);
     const child = ListVec.get_child_field(this.offset, data_type);
-    this.typeId = `LargeListVec<${child.datatype.typeId}>`;
+    this.variant = `LargeListVec<${child.datatype.variant}>`;
   }
 }

@@ -1,6 +1,6 @@
-import { Vec } from "jsarrow/src/array/index";
-import { ArrowError } from "jsarrow";
-import { unwrap } from "jsarrow/src/util/fp";
+import { Vec } from "./array/index";
+import { ArrowError } from "./index";
+import { unwrap } from "./util/fp";
 
 export class Chunk<T extends Vec> {
   #arrays: T[];

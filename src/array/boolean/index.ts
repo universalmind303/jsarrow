@@ -1,5 +1,5 @@
-import { zipValidity } from "jsarrow/src/bitmap/utils/zip_validity";
-import { IterableVector } from "jsarrow/src/util/iterator";
+import { zipValidity } from "../../bitmap/utils/zip_validity";
+import { IterableVector } from "../../util/iterator";
 import { Vec } from "../../array/index";
 import { Bitmap } from "../../bitmap/immutable";
 import { DataType } from "../../datatypes/index";
@@ -7,43 +7,43 @@ import { PhysicalType } from "../../datatypes/physical_type";
 import { ArrowError } from "../../error";
 
 export class BooleanVec extends Vec implements IterableVector<boolean> {
-  protected typeId = "BooleanVec";
+  protected variant = "BooleanVec";
 
   __data_type: DataType;
-  #validity: Bitmap | null;
-  #values: Bitmap;
+  _validity: Bitmap | null;
+  _values: Bitmap;
 
   constructor(data_type: DataType, validity, values) {
     super();
     this.__data_type = data_type;
-    this.#validity = validity;
-    this.#values = values;
+    this._validity = validity;
+    this._values = values;
   }
 
   len(): number {
-    return this.#values.length;
+    return this._values.length;
   }
 
   validity() {
-    return this.#validity;
+    return this._validity;
   }
 
   slice(offset: number, length: number): ThisType<this> {
-    let validity = this.#validity?.slice_unchecked(offset, length);
-    let values = this.#values.slice_unchecked(offset, length);
+    let validity = this._validity?.slice_unchecked(offset, length);
+    let values = this._values.slice_unchecked(offset, length);
     return new BooleanVec(this.__data_type, validity, values);
   }
 
-  value(idx: number) {
-    return this.#values.get_bit(idx);
+  value(index: number) {
+    return this._values.get_bit(index);
   }
-
   values(): IterableIterator<boolean | null> {
     return zipValidity(
-      this.#values.values(),
-      this.#validity?.values() ?? null
+      this._values.values(),
+      this._validity?.values() ?? null
     );
   }
+
 
   [Symbol.iterator]() {
     return this.values();

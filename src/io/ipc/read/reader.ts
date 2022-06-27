@@ -1,7 +1,6 @@
 import * as fb from "flatbuffers";
-import "module-alias/register";
 
-import { fb_to_schema } from "./schema";
+import { deserializeSchema } from "./schema";
 import { Footer } from "../../../fb/org/apache/arrow/flatbuf/footer";
 import { Schema } from "../../../datatypes/schema";
 import { CONTINUATION_MARKER, IpcSchema } from "../index";
@@ -11,159 +10,62 @@ import {
   MessageHeader,
   RecordBatch as RecordBatchRef,
 } from "../../../fb/Message";
-import { Dictionaries } from "jsarrow/src/io/ipc/read/index";
+import { Dictionaries } from "../../../io/ipc/read/index";
 import { ArrowError } from "../../../error";
 import { Reader } from "../../../util/file-reader";
-import { read_record_batch } from "./common";
+import { readRecordBatch } from "./common";
 
-const ARROW_MAGIC = Buffer.from([65, 82, 82, 79, 87, 49]);
-const buf = {
-  type: "Buffer",
-  data: [
-    65, 82, 82, 79, 87, 49, 0, 0, 255, 255, 255, 255, 160, 3, 0, 0, 4, 0, 0, 0,
-    242, 255, 255, 255, 20, 0, 0, 0, 4, 0, 1, 0, 0, 0, 10, 0, 11, 0, 8, 0, 10,
-    0, 4, 0, 248, 255, 255, 255, 12, 0, 0, 0, 8, 0, 8, 0, 0, 0, 4, 0, 12, 0, 0,
-    0, 48, 3, 0, 0, 232, 2, 0, 0, 160, 2, 0, 0, 88, 2, 0, 0, 20, 2, 0, 0, 208,
-    1, 0, 0, 140, 1, 0, 0, 76, 1, 0, 0, 12, 1, 0, 0, 136, 0, 0, 0, 68, 0, 0, 0,
-    4, 0, 0, 0, 236, 255, 255, 255, 44, 0, 0, 0, 32, 0, 0, 0, 24, 0, 0, 0, 1,
-    20, 0, 0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0, 0, 0, 0,
-    252, 255, 255, 255, 4, 0, 4, 0, 7, 0, 0, 0, 115, 116, 114, 105, 110, 103,
-    115, 0, 236, 255, 255, 255, 48, 0, 0, 0, 32, 0, 0, 0, 24, 0, 0, 0, 1, 3, 0,
-    0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0, 0, 0, 0, 250,
-    255, 255, 255, 2, 0, 6, 0, 6, 0, 4, 0, 4, 0, 0, 0, 110, 117, 109, 115, 0, 0,
-    0, 0, 236, 255, 255, 255, 112, 0, 0, 0, 100, 0, 0, 0, 24, 0, 0, 0, 1, 21, 0,
-    0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 1, 0, 0, 0, 4, 0, 0,
-    0, 236, 255, 255, 255, 48, 0, 0, 0, 32, 0, 0, 0, 24, 0, 0, 0, 1, 3, 0, 0,
-    16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0, 0, 0, 0, 250, 255,
-    255, 255, 2, 0, 6, 0, 6, 0, 4, 0, 4, 0, 0, 0, 105, 116, 101, 109, 0, 0, 0,
-    0, 252, 255, 255, 255, 4, 0, 4, 0, 4, 0, 0, 0, 108, 105, 115, 116, 0, 0, 0,
-    0, 236, 255, 255, 255, 48, 0, 0, 0, 32, 0, 0, 0, 24, 0, 0, 0, 1, 3, 0, 0,
-    16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0, 0, 0, 0, 250, 255,
-    255, 255, 2, 0, 6, 0, 6, 0, 4, 0, 3, 0, 0, 0, 102, 54, 52, 0, 236, 255, 255,
-    255, 48, 0, 0, 0, 32, 0, 0, 0, 24, 0, 0, 0, 1, 3, 0, 0, 16, 0, 18, 0, 4, 0,
-    16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0, 0, 0, 0, 250, 255, 255, 255, 1, 0, 6, 0,
-    6, 0, 4, 0, 3, 0, 0, 0, 102, 51, 50, 0, 236, 255, 255, 255, 52, 0, 0, 0, 32,
-    0, 0, 0, 24, 0, 0, 0, 1, 2, 0, 0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0,
-    0, 12, 0, 0, 0, 0, 0, 246, 255, 255, 255, 32, 0, 0, 0, 0, 0, 6, 0, 8, 0, 4,
-    0, 3, 0, 0, 0, 117, 51, 50, 0, 236, 255, 255, 255, 52, 0, 0, 0, 32, 0, 0, 0,
-    24, 0, 0, 0, 1, 2, 0, 0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12,
-    0, 0, 0, 0, 0, 246, 255, 255, 255, 16, 0, 0, 0, 0, 0, 6, 0, 8, 0, 4, 0, 3,
-    0, 0, 0, 117, 49, 54, 0, 236, 255, 255, 255, 52, 0, 0, 0, 32, 0, 0, 0, 24,
-    0, 0, 0, 1, 2, 0, 0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0,
-    0, 0, 0, 246, 255, 255, 255, 8, 0, 0, 0, 0, 0, 6, 0, 8, 0, 4, 0, 2, 0, 0, 0,
-    117, 56, 0, 0, 236, 255, 255, 255, 56, 0, 0, 0, 32, 0, 0, 0, 24, 0, 0, 0, 1,
-    2, 0, 0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0, 0, 0, 0,
-    244, 255, 255, 255, 32, 0, 0, 0, 1, 0, 0, 0, 8, 0, 9, 0, 4, 0, 8, 0, 3, 0,
-    0, 0, 105, 51, 50, 0, 236, 255, 255, 255, 56, 0, 0, 0, 32, 0, 0, 0, 24, 0,
-    0, 0, 1, 2, 0, 0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0, 0,
-    0, 0, 244, 255, 255, 255, 16, 0, 0, 0, 1, 0, 0, 0, 8, 0, 9, 0, 4, 0, 8, 0,
-    3, 0, 0, 0, 105, 49, 54, 0, 236, 255, 255, 255, 56, 0, 0, 0, 32, 0, 0, 0,
-    24, 0, 0, 0, 1, 2, 0, 0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12,
-    0, 0, 0, 0, 0, 244, 255, 255, 255, 8, 0, 0, 0, 1, 0, 0, 0, 8, 0, 9, 0, 4, 0,
-    8, 0, 2, 0, 0, 0, 105, 56, 0, 0, 236, 255, 255, 255, 44, 0, 0, 0, 32, 0, 0,
-    0, 24, 0, 0, 0, 1, 6, 0, 0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0,
-    12, 0, 0, 0, 0, 0, 252, 255, 255, 255, 4, 0, 4, 0, 5, 0, 0, 0, 98, 111, 111,
-    108, 115, 0, 0, 0, 0, 0, 0, 0, 255, 255, 255, 255, 216, 2, 0, 0, 4, 0, 0, 0,
-    236, 255, 255, 255, 208, 1, 0, 0, 0, 0, 0, 0, 20, 0, 0, 0, 4, 0, 3, 0, 12,
-    0, 19, 0, 16, 0, 18, 0, 12, 0, 4, 0, 230, 255, 255, 255, 3, 0, 0, 0, 0, 0,
-    0, 0, 208, 1, 0, 0, 20, 0, 0, 0, 0, 0, 0, 0, 0, 0, 10, 0, 20, 0, 4, 0, 12,
-    0, 16, 0, 27, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 8, 0,
-    0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 16, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0,
-    0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 32, 0, 0, 0,
-    0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 40, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0,
-    0, 0, 0, 48, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 56, 0, 0, 0, 0, 0,
-    0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0,
-    0, 80, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 88, 0, 0, 0, 0, 0, 0, 0,
-    1, 0, 0, 0, 0, 0, 0, 0, 96, 0, 0, 0, 0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0,
-    104, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 112, 0, 0, 0, 0, 0, 0, 0,
-    12, 0, 0, 0, 0, 0, 0, 0, 128, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    128, 0, 0, 0, 0, 0, 0, 0, 12, 0, 0, 0, 0, 0, 0, 0, 144, 0, 0, 0, 0, 0, 0, 0,
-    1, 0, 0, 0, 0, 0, 0, 0, 152, 0, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0,
-    176, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 176, 0, 0, 0, 0, 0, 0, 0,
-    32, 0, 0, 0, 0, 0, 0, 0, 208, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    208, 0, 0, 0, 0, 0, 0, 0, 72, 0, 0, 0, 0, 0, 0, 0, 24, 1, 0, 0, 0, 0, 0, 0,
-    1, 0, 0, 0, 0, 0, 0, 0, 32, 1, 0, 0, 0, 0, 0, 0, 24, 0, 0, 0, 0, 0, 0, 0,
-    56, 1, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 64, 1, 0, 0, 0, 0, 0, 0,
-    32, 0, 0, 0, 0, 0, 0, 0, 96, 1, 0, 0, 0, 0, 0, 0, 106, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 13, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 3,
-    0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0,
-    0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0,
-    0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0,
-    0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0,
-    0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0,
-    3, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 253, 0, 0, 0, 0,
-    0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 255, 0, 3, 0, 0, 0,
-    0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 33, 0, 0, 0, 254, 0, 0, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 14, 100, 3, 0, 53, 130, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0, 0,
-    0, 0, 0, 1, 2, 0, 0, 0, 0, 0, 0, 5, 0, 0, 0, 0, 0, 0, 0, 11, 0, 0, 0, 33, 0,
-    0, 0, 251, 0, 0, 0, 0, 0, 0, 0, 103, 43, 0, 0, 14, 100, 3, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 123, 20, 142, 63, 47, 221, 12, 64, 0, 0, 64, 64, 0, 0, 0, 0, 251,
-    0, 0, 0, 0, 0, 0, 0, 205, 204, 204, 204, 204, 204, 244, 63, 12, 2, 43, 135,
-    22, 217, 1, 64, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 3, 0, 0, 0,
-    0, 0, 0, 0, 6, 0, 0, 0, 0, 0, 0, 0, 9, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0, 0, 0, 8, 64, 0, 0, 0, 0, 0,
-    0, 8, 64, 0, 0, 0, 0, 0, 0, 16, 64, 0, 0, 0, 0, 0, 0, 20, 64, 0, 0, 0, 0, 0,
-    0, 20, 64, 0, 0, 0, 0, 0, 0, 24, 64, 0, 0, 0, 0, 0, 0, 28, 64, 251, 0, 0, 0,
-    0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 240, 63, 0, 0, 0, 0, 0, 0, 0, 64, 0, 0, 0, 0,
-    0, 0, 0, 0, 254, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0,
-    0, 0, 0, 103, 0, 0, 0, 0, 0, 0, 0, 106, 0, 0, 0, 0, 0, 0, 0, 10, 32, 32,
-    111, 105, 50, 51, 104, 105, 101, 107, 50, 101, 105, 107, 101, 97, 114, 115,
-    123, 91, 60, 105, 101, 111, 108, 121, 114, 32, 115, 97, 10, 32, 32, 32, 32,
-    10, 32, 32, 32, 32, 10, 32, 32, 32, 32, 49, 49, 45, 39, 34, 97, 97, 34, 47,
-    45, 62, 97, 10, 32, 32, 32, 32, 111, 111, 32, 32, 32, 10, 32, 32, 32, 32,
-    34, 32, 97, 97, 97, 44, 32, 39, 34, 44, 92, 39, 39, 34, 47, 34, 46, 34, 34,
-    47, 47, 92, 34, 39, 34, 10, 32, 32, 32, 32, 98, 97, 114, 0, 0, 0, 0, 0, 0,
-    255, 255, 255, 255, 0, 0, 0, 0, 8, 0, 0, 0, 0, 0, 0, 0, 236, 255, 255, 255,
-    64, 0, 0, 0, 56, 0, 0, 0, 20, 0, 0, 0, 4, 0, 0, 0, 12, 0, 18, 0, 16, 0, 4,
-    0, 8, 0, 12, 0, 1, 0, 0, 0, 176, 3, 0, 0, 0, 0, 0, 0, 224, 2, 0, 0, 0, 0, 0,
-    0, 208, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 248, 255, 255, 255, 12,
-    0, 0, 0, 8, 0, 8, 0, 0, 0, 4, 0, 12, 0, 0, 0, 48, 3, 0, 0, 232, 2, 0, 0,
-    160, 2, 0, 0, 88, 2, 0, 0, 20, 2, 0, 0, 208, 1, 0, 0, 140, 1, 0, 0, 76, 1,
-    0, 0, 12, 1, 0, 0, 136, 0, 0, 0, 68, 0, 0, 0, 4, 0, 0, 0, 236, 255, 255,
-    255, 44, 0, 0, 0, 32, 0, 0, 0, 24, 0, 0, 0, 1, 20, 0, 0, 16, 0, 18, 0, 4, 0,
-    16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0, 0, 0, 0, 252, 255, 255, 255, 4, 0, 4, 0,
-    7, 0, 0, 0, 115, 116, 114, 105, 110, 103, 115, 0, 236, 255, 255, 255, 48, 0,
-    0, 0, 32, 0, 0, 0, 24, 0, 0, 0, 1, 3, 0, 0, 16, 0, 18, 0, 4, 0, 16, 0, 17,
-    0, 8, 0, 0, 0, 12, 0, 0, 0, 0, 0, 250, 255, 255, 255, 2, 0, 6, 0, 6, 0, 4,
-    0, 4, 0, 0, 0, 110, 117, 109, 115, 0, 0, 0, 0, 236, 255, 255, 255, 112, 0,
-    0, 0, 100, 0, 0, 0, 24, 0, 0, 0, 1, 21, 0, 0, 16, 0, 18, 0, 4, 0, 16, 0, 17,
-    0, 8, 0, 0, 0, 12, 0, 1, 0, 0, 0, 4, 0, 0, 0, 236, 255, 255, 255, 48, 0, 0,
-    0, 32, 0, 0, 0, 24, 0, 0, 0, 1, 3, 0, 0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0,
-    8, 0, 0, 0, 12, 0, 0, 0, 0, 0, 250, 255, 255, 255, 2, 0, 6, 0, 6, 0, 4, 0,
-    4, 0, 0, 0, 105, 116, 101, 109, 0, 0, 0, 0, 252, 255, 255, 255, 4, 0, 4, 0,
-    4, 0, 0, 0, 108, 105, 115, 116, 0, 0, 0, 0, 236, 255, 255, 255, 48, 0, 0, 0,
-    32, 0, 0, 0, 24, 0, 0, 0, 1, 3, 0, 0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8,
-    0, 0, 0, 12, 0, 0, 0, 0, 0, 250, 255, 255, 255, 2, 0, 6, 0, 6, 0, 4, 0, 3,
-    0, 0, 0, 102, 54, 52, 0, 236, 255, 255, 255, 48, 0, 0, 0, 32, 0, 0, 0, 24,
-    0, 0, 0, 1, 3, 0, 0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0,
-    0, 0, 0, 250, 255, 255, 255, 1, 0, 6, 0, 6, 0, 4, 0, 3, 0, 0, 0, 102, 51,
-    50, 0, 236, 255, 255, 255, 52, 0, 0, 0, 32, 0, 0, 0, 24, 0, 0, 0, 1, 2, 0,
-    0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0, 0, 0, 0, 246,
-    255, 255, 255, 32, 0, 0, 0, 0, 0, 6, 0, 8, 0, 4, 0, 3, 0, 0, 0, 117, 51, 50,
-    0, 236, 255, 255, 255, 52, 0, 0, 0, 32, 0, 0, 0, 24, 0, 0, 0, 1, 2, 0, 0,
-    16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0, 0, 0, 0, 246, 255,
-    255, 255, 16, 0, 0, 0, 0, 0, 6, 0, 8, 0, 4, 0, 3, 0, 0, 0, 117, 49, 54, 0,
-    236, 255, 255, 255, 52, 0, 0, 0, 32, 0, 0, 0, 24, 0, 0, 0, 1, 2, 0, 0, 16,
-    0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0, 0, 0, 0, 246, 255, 255,
-    255, 8, 0, 0, 0, 0, 0, 6, 0, 8, 0, 4, 0, 2, 0, 0, 0, 117, 56, 0, 0, 236,
-    255, 255, 255, 56, 0, 0, 0, 32, 0, 0, 0, 24, 0, 0, 0, 1, 2, 0, 0, 16, 0, 18,
-    0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0, 0, 0, 0, 244, 255, 255, 255,
-    32, 0, 0, 0, 1, 0, 0, 0, 8, 0, 9, 0, 4, 0, 8, 0, 3, 0, 0, 0, 105, 51, 50, 0,
-    236, 255, 255, 255, 56, 0, 0, 0, 32, 0, 0, 0, 24, 0, 0, 0, 1, 2, 0, 0, 16,
-    0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0, 0, 0, 0, 244, 255, 255,
-    255, 16, 0, 0, 0, 1, 0, 0, 0, 8, 0, 9, 0, 4, 0, 8, 0, 3, 0, 0, 0, 105, 49,
-    54, 0, 236, 255, 255, 255, 56, 0, 0, 0, 32, 0, 0, 0, 24, 0, 0, 0, 1, 2, 0,
-    0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0, 0, 0, 0, 244,
-    255, 255, 255, 8, 0, 0, 0, 1, 0, 0, 0, 8, 0, 9, 0, 4, 0, 8, 0, 2, 0, 0, 0,
-    105, 56, 0, 0, 236, 255, 255, 255, 44, 0, 0, 0, 32, 0, 0, 0, 24, 0, 0, 0, 1,
-    6, 0, 0, 16, 0, 18, 0, 4, 0, 16, 0, 17, 0, 8, 0, 0, 0, 12, 0, 0, 0, 0, 0,
-    252, 255, 255, 255, 4, 0, 4, 0, 5, 0, 0, 0, 98, 111, 111, 108, 115, 0, 202,
-    3, 0, 0, 65, 82, 82, 79, 87, 49,
-  ],
-};
-const reader = Buffer.from(buf.data);
+import pl from "nodejs-polars";
+
+const ARROW_MAGIC = Uint8Array.from([65, 82, 82, 79, 87, 49]);
+
+const df = pl.DataFrame({
+  bools: [false, false, true, false, ],
+  // strs: Array.from({ length: 10000 }).fill("foo"),
+  // nums: Array.from({ length: 10000 }, (_, k) => k),
+  // nums1: Array.from({ length: 10000 }, (_, k) => k),
+  // nums2: Array.from({ length: 10000 }, (_, k) => k),
+  // nums3: Array.from({ length: 10000 }, (_, k) => k),
+  // nums4: Array.from({ length: 10000 }, (_, k) => k),
+  // nums5: Array.from({ length: 10000 }, (_, k) => k),
+  // nums6: Array.from({ length: 10000 }, (_, k) => k),
+  // nums7: Array.from({ length: 10000 }, (_, k) => k),
+  // nums8: Array.from({ length: 10000 }, (_, k) => k),
+  // nums9: Array.from({ length: 10000 }, (_, k) => k),
+  // nums10: Array.from({ length: 10000 }, (_, k) => k),
+  // nums11: Array.from({ length: 10000 }, (_, k) => k),
+  // nums12: Array.from({ length: 10000 }, (_, k) => k),
+  // nums13: Array.from({ length: 10000 }, (_, k) => k),
+  // nums14: Array.from({ length: 10000 }, (_, k) => k),
+  // nums15: Array.from({ length: 10000 }, (_, k) => k),
+  // nums16: Array.from({ length: 10000 }, (_, k) => k),
+  // nums17: Array.from({ length: 10000 }, (_, k) => k),
+  // nums18: Array.from({ length: 10000 }, (_, k) => k),
+  // nums19: Array.from({ length: 10000 }, (_, k) => k),
+  // nums20: Array.from({ length: 10000 }, (_, k) => k),
+  // nums21: Array.from({ length: 10000 }, (_, k) => k),
+  // nums22: Array.from({ length: 10000 }, (_, k) => k),
+  // nums23: Array.from({ length: 10000 }, (_, k) => k),
+  // nums24: Array.from({ length: 10000 }, (_, k) => k),
+  // nums25: Array.from({ length: 10000 }, (_, k) => k),
+  // nums26: Array.from({ length: 10000 }, (_, k) => k),
+  // nums27: Array.from({ length: 10000 }, (_, k) => k),
+  // nums28: Array.from({ length: 10000 }, (_, k) => k),
+  // nums29: Array.from({ length: 10000 }, (_, k) => k),
+  // nums30: Array.from({ length: 10000 }, (_, k) => k),
+  // nums31: Array.from({ length: 10000 }, (_, k) => k),
+  // nums32: Array.from({ length: 10000 }, (_, k) => k),
+  // nums33: Array.from({ length: 10000 }, (_, k) => k),
+  // nums34: Array.from({ length: 10000 }, (_, k) => k),
+  // nums35: Array.from({ length: 10000 }, (_, k) => k),
+  // nums36: Array.from({ length: 10000 }, (_, k) => k),
+  // nums37: Array.from({ length: 10000 }, (_, k) => k),
+  // nums38: Array.from({ length: 10000 }, (_, k) => k),
+  // nums39: Array.from({ length: 10000 }, (_, k) => k),
+  // nums40: Array.from({ length: 10000 }, (_, k) => k),
+});
+
+const reader = df.writeIPC();
 
 function readFooterLength(reader: Buffer) {
   const footer = reader.subarray(-10);
@@ -175,19 +77,21 @@ function readFooterLength(reader: Buffer) {
   return footerLen;
 }
 
-function deserialize_footer(footerData: Buffer): FileMetadata {
+function deserializeFooter(footerData: Buffer): FileMetadata {
   const buf = new fb.ByteBuffer(footerData);
 
   const footer = Footer.getRootAsFooter(buf);
   const batchLen = footer.recordBatchesLength();
+
   const blocks = Array.from(
     { length: batchLen },
     (v, k) => footer.recordBatches(k)!
   );
 
   let raw_schema = footer.schema()!;
-  let [schema, ipc_schema] = fb_to_schema(raw_schema);
-  let len = footer.dictionariesLength();
+
+  const [schema, ipc_schema] = deserializeSchema(raw_schema);
+  const len = footer.dictionariesLength();
   let dictionaries: Block[] | undefined;
 
   if (len !== 0) {
@@ -213,30 +117,24 @@ function readFileMetadata(reader: Buffer): FileMetadata {
   const len = readFooterLength(reader) + 10;
 
   const footerSlice = reader.subarray(-len, -10);
-  return deserialize_footer(footerSlice);
+  return deserializeFooter(footerSlice);
 }
 
-export function get_serialized_batch(
-  message: MessageRef
-): RecordBatchRef | null {
+export function getSerializedBatch(message: MessageRef): RecordBatchRef | null {
   let headerType = message.headerType();
-  const batch = {
-    [MessageHeader.Schema]() {
+  switch (true) {
+    case headerType === MessageHeader.Schema:
       throw new Error("Not expecting a schema when messages are read");
-    },
-    [MessageHeader.RecordBatch]() {
+    case headerType === MessageHeader.RecordBatch:
       return message.header(new RecordBatchRef());
-    },
-  }[headerType]();
-  if (!batch) {
-    throw ArrowError.OutOfSpec(
-      `Reading types other than record batches not yet supported, unable to read ${MessageHeader[headerType]}`
-    );
+    default:
+      throw ArrowError.OutOfSpec(
+        `Reading types other than record batches not yet supported, unable to read ${MessageHeader[headerType]}`
+      );
   }
-  return batch;
 }
 
-export function read_batch(
+export function readBatch(
   reader: Reader,
   dictionaries: Dictionaries,
   metadata: FileMetadata,
@@ -248,21 +146,22 @@ export function read_batch(
   let block_offset = Number(block.offset());
 
   reader.seek(block_offset);
-  let meta_buf = Uint8Array.from({ length: 4 });
+  let meta_buf = Buffer.alloc(4);
   reader.read_exact(meta_buf);
 
-  if (Buffer.from(meta_buf.buffer).equals(CONTINUATION_MARKER)) {
+  if (meta_buf.equals(CONTINUATION_MARKER)) {
     reader.read_exact(meta_buf);
   }
 
-  let meta_len = Buffer.from(meta_buf.buffer).readInt32LE(0);
-  let stratch = Buffer.allocUnsafe(meta_len);
+  let meta_len = meta_buf.readInt32LE(0);
+  let bb = fb.ByteBuffer.allocate(meta_len);
+
+  let stratch = Buffer.from(bb.bytes().buffer);
   reader.read_exact(stratch);
-  let bb = new fb.ByteBuffer(stratch);
 
   let message = MessageRef.getRootAsMessage(bb);
-  let batch = get_serialized_batch(message);
-  const record_batch = read_record_batch(
+  let batch = getSerializedBatch(message);
+  const record_batch = readRecordBatch(
     batch!,
     metadata.schema.fields,
     metadata.ipc_schema,
@@ -280,8 +179,9 @@ const dicts = new Map();
 const projection = [];
 const index = 0;
 
-const schema = metadata.schema;
-const batch = read_batch(
+console.time("read_batch");
+
+const batch = readBatch(
   Reader.fromBuffer(reader),
   dicts,
   metadata,
@@ -289,7 +189,15 @@ const batch = read_batch(
   index
 );
 
+console.timeEnd("read_batch");
 
+console.log(batch);
+console.time("pl read_batch");
+const df0 = pl.readIPC(reader).schema;
+console.timeEnd("pl read_batch");
+
+const bool_bytes = (batch?.arrays()[0]! as any)._values.__bytes;
+console.log(bool_bytes);
 interface FileMetadata {
   schema: Schema;
   ipc_schema: IpcSchema;

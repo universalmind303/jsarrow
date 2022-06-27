@@ -1,105 +1,89 @@
-import {
-  NativeArrayType,
-  TypedArray,
-  TypedArrayConstructor,
-} from "../interfaces";
+import { TypedArray, TypedArrayConstructor } from "../interfaces";
 import { FunctionalEnum } from "../util/enum_impl";
-import util from "util";
 import { ArrowError } from "../error";
 
-export class PrimitiveType extends FunctionalEnum {
-  static identity = "PrimitiveType";
-  static #variants = {
-    0: "Int8",
-    1: "Int16",
-    2: "Int32",
-    3: "Int64",
-    4: "Int128",
-    5: "UInt8",
-    6: "UInt16",
-    7: "UInt32",
-    8: "UInt64",
-    9: "Float16",
-    10: "Float32",
-    11: "Float64",
-    12: "DaysMs",
-    13: "MonthDayNano",
-    Int8: { inner: 0 },
-    Int16: { inner: 1 },
-    Int32: { inner: 2 },
-    Int64: { inner: 3 },
-    Int128: { inner: 4 },
-    UInt8: { inner: 5 },
-    UInt16: { inner: 6 },
-    UInt32: { inner: 7 },
-    UInt64: { inner: 8 },
-    Float16: { inner: 9 },
-    Float32: { inner: 10 },
-    Float64: { inner: 11 },
-    DaysMs: { inner: 12 },
-    MonthDayNano: { inner: 13 },
-  } as const;
+function PType(variant, arrayConstructor: any = null): PrimitiveType {
+  return new (class extends PrimitiveType {
+    protected variant = variant;
+    protected get inner() {
+      return null;
+    }
+    get arrayConstructor() {
+      return arrayConstructor;
+    }
+  })();
+}
 
-  private constructor(inner) {
-    super(inner, PrimitiveType.identity, PrimitiveType.#variants);
-  }
+export abstract class PrimitiveType extends FunctionalEnum {
+  protected identity = "PrimitiveType";
+  protected abstract get arrayConstructor(): any;
   /**  A signed 8-bit integer. */
   public static get Int8() {
-    return new PrimitiveType(PrimitiveType.#variants.Int8);
+    return PType("Int8", Int8Array);
   }
   /**  A signed 16-bit integer. */
   public static get Int16() {
-    return new PrimitiveType(PrimitiveType.#variants.Int16);
+    return PType("Int16", Int16Array);
   }
   /**  A signed 32-bit integer. */
   public static get Int32() {
-    return new PrimitiveType(PrimitiveType.#variants.Int32);
+    return PType("Int32", Int32Array);
   }
   /**  A signed 64-bit integer. */
   public static get Int64() {
-    return new PrimitiveType(PrimitiveType.#variants.Int64);
+    return PType("Int64", BigInt64Array);
   }
   /**  A signed 128-bit integer. */
   public static get Int128() {
-    return new PrimitiveType(PrimitiveType.#variants.Int128);
+    return PType("Int128", null);
   }
   /**  An unsigned 8-bit integer. */
   public static get UInt8() {
-    return new PrimitiveType(PrimitiveType.#variants.UInt8);
+    return PType("UInt8", Uint8Array);
   }
   /**  An unsigned 16-bit integer. */
   public static get UInt16() {
-    return new PrimitiveType(PrimitiveType.#variants.UInt16);
+    return PType("UInt16", Uint16Array);
   }
   /**  An unsigned 32-bit integer. */
   public static get UInt32() {
-    return new PrimitiveType(PrimitiveType.#variants.UInt32);
+    return PType("UInt32", Uint32Array);
   }
   /**  An unsigned 64-bit integer. */
   public static get UInt64() {
-    return new PrimitiveType(PrimitiveType.#variants.UInt64);
+    return PType("UInt64", BigUint64Array);
   }
   /**  A 16-bit floating point number. */
   public static get Float16() {
-    return new PrimitiveType(PrimitiveType.#variants.Float16);
+    return PType("Float16", Float32Array);
   }
   /**  A 32-bit floating point number. */
   public static get Float32() {
-    return new PrimitiveType(PrimitiveType.#variants.Float32);
+    return PType("Float32", Float32Array);
   }
   /**  A 64-bit floating point number. */
   public static get Float64() {
-    return new PrimitiveType(PrimitiveType.#variants.Float64);
+    return PType("Float64", Float64Array);
   }
   /**  Two i32 representing days and ms */
   public static get DaysMs() {
-    return new PrimitiveType(PrimitiveType.#variants.DaysMs);
+    return PType("DaysMs");
   }
   /**  months_days_ns(i32, i32, i64) */
   public static get MonthDayNano() {
-    return new PrimitiveType(PrimitiveType.#variants.MonthDayNano);
+    return PType("MonthDayNano");
   }
-  public static inferFromArray(arr: NativeArrayType) {
+  public toTypedArrayConstructor(): TypedArrayConstructor<TypedArray> {
+    const value = this.arrayConstructor;
+
+    if (value !== null) {
+      return value;
+    } else {
+      throw ArrowError.OutOfSpec(`${this.toString()} is not a supported type`);
+    }
+  }
+
+  public static inferFromArray(arr: any) {
     if (Array.isArray(arr)) {
       switch (typeof arr[0]) {
         case "bigint":
@@ -134,25 +118,6 @@ export class PrimitiveType extends FunctionalEnum {
         default:
           throw new Error(`unknown  typed array type: ${arr.constructor.name}`);
       }
-    }
-  }
-  public toTypedArrayConstructor(): TypedArrayConstructor<TypedArray> {
-    const value = {
-      0: Int8Array,
-      1: Int16Array,
-      2: Int32Array,
-      3: BigInt64Array,
-      5: Uint8Array,
-      6: Uint16Array,
-      7: Uint32Array,
-      8: BigUint64Array,
-      10: Float32Array,
-      11: Float64Array,
-    }[this.inner];
-    if (value !== undefined) {
-      return value;
-    } else {
-      throw ArrowError.OutOfSpec(`${this.toString()} is not a supported type`);
     }
   }
 }

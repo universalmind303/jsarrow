@@ -1,127 +1,26 @@
 import { Offset } from "../../../../types/offset";
 import { Utf8Vec } from "../../../../array/index";
-import { DataType } from "../../../../datatypes/index";
 import { ArrowError } from "../../../../error";
-import { Compression, IpcBuffer, Node } from "../../../../io/ipc/read/index";
-import { read_buffer, read_validity } from "../../../../io/ipc/read/read_basic";
-import { Reader } from "../../../../util/file-reader";
+import { Deserializer } from "../deserialize";
 
-function read_utf8_impl(
-  field_node: Node,
-  data_type: DataType,
-  buffers: Array<IpcBuffer>,
-  reader: Reader,
-  block_offset: bigint,
-  is_little_endian: boolean,
-  compression: Compression | null
-): Utf8Vec<Offset.I32> | Error {
-  let validity = read_validity(
-    buffers,
-    field_node,
-    reader,
-    block_offset,
-    is_little_endian,
-    compression
-  );
-  let offsets = read_buffer(Int32Array)(
-    buffers,
-    1n + field_node.length(),
-    reader,
-    block_offset,
-    is_little_endian,
-    compression
-  );
-
-  let last_offset = offsets[offsets.length - 1];
-
-  let values = read_buffer(Int8Array)(
-    buffers,
-    BigInt(last_offset),
-    reader,
-    block_offset,
-    is_little_endian,
-    compression
-  );
-
-  return Utf8Vec.try_new(
-    data_type,
-    offsets,
-    Buffer.from(values.buffer),
-    validity
-  );
-}
-function read_large_utf8_impl(
-  field_node: Node,
-  data_type: DataType,
-  buffers: Array<IpcBuffer>,
-  reader: Reader,
-  block_offset: bigint,
-  is_little_endian: boolean,
-  compression: Compression | null
-): Utf8Vec<Offset.I64> | Error {
-  let validity = read_validity(
-    buffers,
-    field_node,
-    reader,
-    block_offset,
-    is_little_endian,
-    compression
-  );
-  let offsets = read_buffer(BigInt64Array)(
-    buffers,
-    1n + field_node.length(),
-    reader,
-    block_offset,
-    is_little_endian,
-    compression
-  );
-
-  let last_offset = offsets[offsets.length - 1];
-
-  let values = read_buffer(Int8Array)(
-    buffers,
-    BigInt(last_offset),
-    reader,
-    block_offset,
-    is_little_endian,
-    compression
-  );
-
-  return Utf8Vec.try_new(
-    data_type,
-    offsets,
-    Buffer.from(values.buffer),
-    validity
-  );
-}
-export function read_utf8(offset: Offset) {
-  return function (
-    field_nodes: Array<Node>,
-    data_type: DataType,
-    buffers: Array<IpcBuffer>,
-    reader: Reader,
-    block_offset: bigint,
-    is_little_endian: boolean,
-    compression: Compression | null
-  ): Utf8Vec<typeof offset> | Error {
-    let field_node = field_nodes.shift();
-    if (!field_node) {
-      return ArrowError.OutOfSpec(
-        `IPC: unable to fetch the field for ${data_type}. The file or stream is corrupted.`
-      );
-    }
-    
-    return {
-      [Offset.I32]: read_utf8_impl,
-      [Offset.I64]: read_large_utf8_impl,
-    }[offset](
-      field_node!,
-      data_type,
-      buffers,
-      reader,
-      block_offset,
-      is_little_endian,
-      compression
+export function deserializeUtf8(this: Deserializer, offset: Offset) {
+  let field_node = this.mutable_field_nodes.shift();
+  if (!field_node) {
+    return ArrowError.OutOfSpec(
+      `IPC: unable to fetch the field for ${this.data_type}. The file or stream is corrupted.`
     );
-  };
+  }
+  let validity = this.readValidity(field_node);
+  const ta = offset === Offset.I64 ? BigInt64Array : Int32Array;
+
+  let offsets = this.readBuffer(ta as any, 1n + field_node.length());
+  let last_offset = offsets[offsets.length - 1];
+  let values = this.readBuffer(Uint8Array, BigInt(last_offset));
+
+  return Utf8Vec.try_new(
+    this.data_type,
+    offsets as any,
+    Buffer.from(values.buffer),
+    validity
+  );
 }

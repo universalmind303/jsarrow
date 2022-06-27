@@ -1,165 +1,128 @@
 import { FunctionalEnum } from "../util/enum_impl";
 import { PrimitiveType } from "../types/index";
 
-export class IntegerType extends FunctionalEnum {
-  static identity = "IntegerType";
-  static #variants = {
-    0: "Int8",
-    1: "Int16",
-    2: "Int32",
-    3: "Int64",
-    4: "UInt8",
-    5: "UInt16",
-    6: "UInt32",
-    7: "UInt64",
-    Int8: { inner: 0 },
-    Int16: { inner: 1 },
-    Int32: { inner: 2 },
-    Int64: { inner: 3 },
-    UInt8: { inner: 4 },
-    UInt16: { inner: 5 },
-    UInt32: { inner: 6 },
-    UInt64: { inner: 7 },
-  } as const;
+function Int(variant): IntegerType {
+  return new (class extends IntegerType {
+    protected variant = variant;
+  })();
+}
 
-  private constructor(inner) {
-    super(inner, IntegerType.identity, IntegerType.#variants);
-  }
-
+export abstract class IntegerType extends FunctionalEnum {
+  protected identity = "IntegerType";
+  protected inner = null;
   /** A signed 8-bit integer. */
-  public static Int8 = new IntegerType(IntegerType.#variants.Int8);
+  public static get Int8() {
+    return Int("Int8");
+  }
   /** A signed 16-bit integer. */
-  public static Int16 = new IntegerType(IntegerType.#variants.Int16);
+  public static get Int16() {
+    return Int("Int16");
+  }
   /** A signed 32-bit integer. */
-  public static Int32 = new IntegerType(IntegerType.#variants.Int32);
+  public static get Int32() {
+    return Int("Int32");
+  }
   /** A signed 64-bit integer. */
-  public static Int64 = new IntegerType(IntegerType.#variants.Int64);
+  public static get Int64() {
+    return Int("Int64");
+  }
   /** An unsigned 8-bit integer. */
-  public static UInt8 = new IntegerType(IntegerType.#variants.UInt8);
+  public static get UInt8() {
+    return Int("UInt8");
+  }
   /** An unsigned 16-bit integer. */
-  public static UInt16 = new IntegerType(IntegerType.#variants.UInt16);
+  public static get UInt16() {
+    return Int("UInt16");
+  }
   /** An unsigned 32-bit integer. */
-  public static UInt32 = new IntegerType(IntegerType.#variants.UInt32);
+  public static get UInt32() {
+    return Int("UInt32");
+  }
   /** An unsigned 64-bit integer. */
-  public static UInt64 = new IntegerType(IntegerType.#variants.UInt64);
+  public static get UInt64() {
+    return Int("UInt64");
+  }
   public into<T>(this: IntegerType, intoClass): T {
     return (intoClass as any).from(this);
   }
 }
 
-const __PhysicalTypeVariants = {
-  0: "Null",
-  1: "Boolean",
-  2(primitive: PrimitiveType) {
-    return {
-      Primitive: primitive,
-    } as const;
-  },
-  3: "Binary",
-  4: "FixedSizeBinary",
-  5: "LargeBinary",
-  6: "Utf8",
-  7: "LargeUtf8",
-  8: "List",
-  9: "FixedSizeList",
-  10: "LargeList",
-  11: "Struct",
-  12: "Union",
-  13: "Map",
-  14(integerType: IntegerType) {
-    return {
-      Dictionary: integerType,
-    } as const;
-  },
-  Null: { inner: 0 },
-  Boolean: { inner: 1 },
-  Primitive: function (primitive: PrimitiveType) {
-    return {
-      inner: 2,
-      data: primitive,
-    } as const;
-  },
-  Binary: { inner: 3 },
-  FixedSizeBinary: { inner: 4 },
-  LargeBinary: { inner: 5 },
-  Utf8: { inner: 6 },
-  LargeUtf8: { inner: 7 },
-  List: { inner: 8 },
-  FixedSizeList: { inner: 9 },
-  LargeList: { inner: 10 },
-  Struct: { inner: 11 },
-  Union: { inner: 12 },
-  Map: { inner: 13 },
-  Dictionary: function (integerType: IntegerType) {
-    return {
-      inner: 14,
-      data: integerType,
-    } as const;
-  },
-} as const;
-
-export class PhysicalType extends FunctionalEnum {
-  static #identity = "PhysicalType";
-
-  static #variants = ({ inner, data }: { inner: number; data }) => {
-    const variant = __PhysicalTypeVariants[inner];
-    if (data) {
-      return variant(data);
-    } else {
-      return variant;
+function PType(variant, data: any = null): PhysicalType {
+  return new (class extends PhysicalType {
+    protected variant = variant;
+    protected get inner() {
+      return data;
     }
-  };
+  })();
+}
 
-  private constructor(inner) {
-    super(inner, PhysicalType.#identity, PhysicalType.#variants);
-  }
+export abstract class PhysicalType extends FunctionalEnum {
+  protected identity = "PhysicalType";
+  protected abstract variant: string;
 
   /** A Null with no allocation. */
-  public static Null = new PhysicalType(__PhysicalTypeVariants.Null);
+  public static get Null() {
+    return PType("Null");
+  }
   /** A boolean represented as a single bit. */
-  public static Boolean = new PhysicalType(__PhysicalTypeVariants.Boolean);
+  public static get Boolean() {
+    return PType("Boolean");
+  }
   /** An array where each slot has a known compile-time size. */
   public static Primitive(primitiveType: PrimitiveType) {
-    return new PhysicalType(__PhysicalTypeVariants.Primitive(primitiveType));
+    return PType("Primitive", primitiveType);
   }
   /** Opaque binary data of variable length. */
-  public static Binary = new PhysicalType(__PhysicalTypeVariants.Binary);
-  /** Opaque binary data of fixed size. */
-  public static FixedSizeBinary = new PhysicalType(
-    __PhysicalTypeVariants.FixedSizeBinary
-  );
+  public static get Binary() {
+    return PType("Binary");
+  } /** Opaque binary data of fixed size. */
+  public static get FixedSizeBinary() {
+    return PType("FixedSizeBinary");
+  }
   /** Opaque binary data of variable length and 64-bit offsets. */
-  public static LargeBinary = new PhysicalType(
-    __PhysicalTypeVariants.LargeBinary
-  );
+  public static get LargeBinary() {
+    return PType("LargeBinary");
+  }
   /** A variable-length string in Unicode with UTF-8 encoding. */
-  public static Utf8 = new PhysicalType(__PhysicalTypeVariants.Utf8);
+  public static get Utf8() {
+    return PType("Utf8");
+  }
   /** An unsigned 64-bit integer. */
-  public static LargeUtf8 = new PhysicalType(__PhysicalTypeVariants.LargeUtf8);
+  public static get LargeUtf8() {
+    return PType("LargeUtf8");
+  }
   /** A list of some data type with variable length. */
-  public static List = new PhysicalType(__PhysicalTypeVariants.List);
+  public static get List() {
+    return PType("List");
+  }
   /** A list of some data type with fixed length */
-  public static FixedSizeList = new PhysicalType(
-    __PhysicalTypeVariants.FixedSizeList
-  );
+  public static get FixedSizeList() {
+    return PType("FixedSizeList");
+  }
   /** A list of some data type with variable length and 64-bit offsets. */
-  public static LargeList = new PhysicalType(__PhysicalTypeVariants.LargeList);
+  public static get LargeList() {
+    return PType("LargeList");
+  }
   /** A nested type that contains an arbitrary number of fields. */
-  public static Struct = new PhysicalType(__PhysicalTypeVariants.Struct);
+  public static get Struct() {
+    return PType("Struct");
+  }
   /** A nested type that represents slots of differing types. */
-  public static Union = new PhysicalType(__PhysicalTypeVariants.Union);
+  public static get Union() {
+    return PType("Union");
+  }
   /** A nested type. */
-  public static Map = new PhysicalType(__PhysicalTypeVariants.Map);
+  public static get Map() {
+    return PType("Map");
+  }
   /** A dictionary encoded array by `IntegerType`. */
   public static Dictionary(integerType: IntegerType) {
-    return new PhysicalType(__PhysicalTypeVariants.Dictionary(integerType));
+    return PType("Dictionary", integerType);
   }
-
   /** Whether this physical type equals [`PhysicalType::Primitive`] of type `primitive`. */
   public eqPrimitive(primitive: PrimitiveType): boolean {
-    // return true;
-    if (this.__inner.inner === (__PhysicalTypeVariants.Primitive as any)()) {
-      return (this.__inner.data as PrimitiveType).equals(primitive);
+    if (this.variant === "Primitive") {
+      return this.inner![0].equals(primitive);
     } else {
       return false;
     }

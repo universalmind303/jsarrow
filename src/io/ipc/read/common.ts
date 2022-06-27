@@ -4,14 +4,15 @@ import { ArrowError } from "../../../error";
 import {
   MetadataVersion,
   RecordBatch as RecordBatchRef,
-} from "jsarrow/src/fb/Message";
+} from "../../../fb/Message";
 import { IpcSchema } from "../index";
-import { read } from "./deserialize";
+import { Deserializer } from "./deserialize";
 import { Dictionaries } from "./index";
 import { Reader } from "../../../util/file-reader";
-import { Chunk } from "jsarrow/src/chunk";
+import { Chunk } from "../../../chunk";
+import { Vec } from "../../../array/index";
 
-export function read_record_batch(
+export function readRecordBatch(
   batch: RecordBatchRef,
   fields: Field[],
   ipc_schema: IpcSchema,
@@ -41,12 +42,15 @@ export function read_record_batch(
     }
     return node!;
   });
-  let columns;
   if (projection !== null) {
   } else {
-    columns = fields.map((fld, idx) => {
-      let ipc_fld = ipc_schema.fields[idx];
-      return read(
+    let fieldsLength = fields.length;
+    const columns: Vec[] = Array.from({ length: fieldsLength });
+
+    for (let i = 0; i < fieldsLength; i++) {
+      const fld = fields[i];
+      let ipc_fld = ipc_schema.fields[i];
+      columns[i] = Deserializer.deserialize(
         field_nodes,
         fld,
         ipc_fld,
@@ -58,9 +62,8 @@ export function read_record_batch(
         batch.compression(),
         version
       );
-    });
-
+    }
     const chunk = Chunk.create(columns);
-    console.log(chunk);
+    return chunk;
   }
 }

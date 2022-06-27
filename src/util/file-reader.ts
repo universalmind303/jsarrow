@@ -1,28 +1,27 @@
 import { TypedArray } from "../interfaces";
 
 export class Reader {
-  #pos: number;
-  #buf: Buffer;
+  private _position: number;
+  private __buf: Buffer;
 
   public static fromBuffer(buffer: Buffer): Reader {
     return new Reader(0, buffer);
   }
 
   private constructor(pos: number, buf: Buffer) {
-    this.#buf = buf;
-    this.#pos = 0;
+    this.__buf = buf;
+    this._position = 0;
   }
 
-
   get bytes() {
-    return this.#buf.buffer;
+    return this.__buf.buffer;
   }
 
   seek(pos: number | bigint) {
     if (typeof pos === "bigint") {
       pos = Number(pos);
     }
-    this.#pos = pos;
+    this._position = pos;
   }
   /**
    * copies data from internal buffer into <buffer>.
@@ -36,11 +35,15 @@ export class Reader {
       // transfer from main buffer to 'Buffer' representation of the bigint
 
       const tmp = Buffer.from(buffer.buffer);
-      const s = this.#buf.subarray(this.#pos, (this.#pos += tmp.length));
-      tmp.set(s as any, 0);
+      const s = this.__buf.subarray(
+        this._position,
+        (this._position += tmp.length)
+      );
+      tmp.copy(s, 0);
+      // tmp.set(s as any, 0);
     } else {
       buffer.set(
-        this.#buf.subarray(this.#pos, (this.#pos += buffer.length)),
+        this.__buf.subarray(this._position, (this._position += buffer.length)),
         0
       );
     }

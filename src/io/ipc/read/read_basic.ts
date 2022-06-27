@@ -3,7 +3,8 @@ import { Reader } from "../../../util/file-reader";
 import { ArrowError } from "../../../error";
 import { TypedArray, TypedArrayConstructor } from "../../../interfaces";
 import { is_native_little_endian } from "../../../io/ipc/endianness";
-import { Compression, IpcBuffer, Node } from "../../../io/ipc/read/index";
+import { Compression, Node } from "../../../io/ipc/read/index";
+import { Deserializer } from "./deserialize";
 
 /**
  *
@@ -24,9 +25,7 @@ function read_uncompressed_buffer<T extends TypedArray>(
     if (bytes > buffer_length) {
       throw ArrowError.OutOfSpec(`The slots of the array times the physical size must 
       be smaller or equal to the length of the IPC buffer. 
-      However, this array reports ${length} slots, which, for physical type "${
-        typedArray.name
-      }", corresponds to ${bytes} bytes, 
+      However, this array reports ${length} slots, which, for physical type "${typedArray.name}", corresponds to ${bytes} bytes, 
       which is larger than the buffer length ${buffer_length}",`);
     }
 
@@ -54,67 +53,58 @@ function read_compressed_buffer<T extends TypedArray>(
   };
 }
 
-export function read_buffer<T extends TypedArray>(
-  typedArray: TypedArrayConstructor<T>
+export function readBuffer<T extends TypedArray>(
+  this: Deserializer,
+  typedArray: TypedArrayConstructor<T>,
+  length: bigint
 ) {
-  return function (
-    mutable_buffers: Array<IpcBuffer>,
-    length: bigint,
-    mutable_reader: Reader,
-    block_offset: bigint,
-    is_little_endian: boolean,
-    compression: Compression | null
-  ) {
-    let buf = mutable_buffers.shift();
-    if (!buf) {
-      throw new Error("IPC: unable to fetch a buffer. The file is corrupted.");
-    }
-    buf = buf!;
-
-    mutable_reader.seek(block_offset + buf.offset());
-    let buffer_length = buf.length();
-    if (compression !== null) {
-      return read_compressed_buffer(typedArray)(
-        mutable_reader,
-        buffer_length,
-        length,
-        is_little_endian,
-        compression!
-      );
-    } else {
-      return read_uncompressed_buffer(typedArray)(
-        mutable_reader,
-        buffer_length,
-        length,
-        is_little_endian
-      );
-    }
-  };
-}
-export function read_bitmap(
-  mutable_buffers: Array<IpcBuffer>,
-  length: bigint,
-  mutable_reader: Reader,
-  block_offset: bigint,
-  _: boolean,
-  compression: Compression | null
-): Bitmap {
-  let buf = mutable_buffers.shift();
+  let buf = this.mutable_buffers.shift();
   if (!buf) {
     throw new Error("IPC: unable to fetch a buffer. The file is corrupted.");
   }
-  mutable_reader.seek(block_offset);
+  buf = buf!;
+
+  this.reader.seek(this.block_offset + buf.offset());
+  let buffer_length = buf.length();
+  if (this.compression !== null) {
+    return read_compressed_buffer(typedArray)(
+      this.reader,
+      buffer_length,
+      length,
+      this.is_little_endian,
+      this.compression!
+    );
+  } else {
+    return read_uncompressed_buffer(typedArray)(
+      this.reader,
+      buffer_length,
+      length,
+      this.is_little_endian
+    );
+  }
+}
+export function readBitmap(this: Deserializer, length: bigint): Bitmap {
+  let buf = this.mutable_buffers.shift();
+  if (!buf) {
+    throw new Error("IPC: unable to fetch a buffer. The file is corrupted.");
+  }
+  this.reader.seek(this.block_offset + buf.offset());
   let bytes = buf.length();
   buf = buf!;
 
   let buffer;
-  if (compression) {
-    buffer = read_compressed_bitmap(length, bytes, compression, mutable_reader);
+  if (this.compression) {
+    buffer = read_compressed_bitmap(
+      length,
+      bytes,
+      this.compression,
+      this.reader
+    );
   } else {
-    buffer = read_uncompressed_bitmap(length, bytes, mutable_reader);
+    buffer = read_uncompressed_bitmap(length, bytes, this.reader);
   }
-
   const bitmap = Bitmap.try_new(buffer, Number(length));
+
   if (bitmap instanceof Error) {
     throw bitmap;
   }
@@ -134,9 +124,9 @@ function read_uncompressed_bitmap(
     );
   }
 
-  let buffer = Uint8Array.from({ length: Number(bytes) });
+  let buffer = Buffer.alloc(Number(bytes));
   mutable_reader.read_exact(buffer);
-  return buffer;
+  return new Uint8Array(buffer.buffer);
 }
 
 function read_compressed_bitmap(
@@ -148,25 +138,11 @@ function read_compressed_bitmap(
   throw ArrowError.NotYetImplemented("read_compressed_bitmap");
 }
 
-export function read_validity(
-  mutable_buffers: Array<IpcBuffer>,
-  field_node: Node,
-  mutable_reader: Reader,
-  block_offset: bigint,
-  is_little_endian: boolean,
-  compression: Compression | null
-) {
-  if (field_node.nullCount() > 0) {
-    return read_bitmap(
-      mutable_buffers,
-      field_node.length(),
-      mutable_reader,
-      block_offset,
-      is_little_endian,
-      compression
-    );
+export function readValidity(this: Deserializer, field_node: Node) {
+  if (field_node.nullCount() > 0n) {
+    return this.readBitmap(field_node.length());
   } else {
-    mutable_buffers.shift();
+    this.mutable_buffers.shift();
     return null;
   }
 }

@@ -1,35 +1,32 @@
-import { BitmapIter } from "jsarrow/src/bitmap/iterator";
+import { BitmapIter } from "../iterator";
 
 export class ZipValidity<T, I extends IterableIterator<T>>
   implements IterableIterator<T | null>
 {
-  #values: I;
-  #validity_iter: BitmapIter;
-  #has_validity: boolean;
+  _values: I;
+  _validity_iter: BitmapIter;
+  _has_validity: boolean;
 
   constructor(values: I, validity: BitmapIter | null) {
-    this.#values = values;
-    this.#has_validity = validity !== null;
-    this.#validity_iter =
+    this._values = values;
+    this._has_validity = validity !== null;
+    this._validity_iter =
       validity ?? new BitmapIter(new Int8Array().buffer, 0, 0);
   }
   next(): IteratorResult<T | null, null> {
-    if (!this.#has_validity) {
-      return this.#values.next();
+    if (!this._has_validity) {
+      return this._values.next();
     } else {
-      const { value: is_valid, done } = this.#validity_iter.next();
-      const { value } = this.#values.next();
-      if (is_valid) {
-        return {
-          done,
-          value,
-        };
-      } else {
-        return {
-          done,
-          value: null,
-        };
+      let validity = this._validity_iter.next();
+      if (validity.done) {
+        return validity;
       }
+      if (validity.value) {
+        return this._values.next();
+      }
+      return {
+        value: null,
+      };
     }
   }
   [Symbol.iterator]() {

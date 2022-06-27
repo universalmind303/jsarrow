@@ -1,5 +1,5 @@
 import assert from "assert";
-import { zipValidity } from "jsarrow/src/bitmap/utils/zip_validity";
+import { zipValidity } from "../../bitmap/utils/zip_validity";
 import { Vec } from "../../array/index";
 import { Bitmap } from "../../bitmap/immutable";
 import { DataType } from "../../datatypes/index";
@@ -9,7 +9,7 @@ import { NativeArrayType, TypedArray } from "../../interfaces";
 import { PrimitiveType } from "../../types/index";
 
 export class PrimitiveVec<T extends TypedArray> extends Vec {
-  protected typeId: string;
+  protected variant: string;
   __data_type: DataType;
 
   #validity: Bitmap | null;
@@ -17,7 +17,7 @@ export class PrimitiveVec<T extends TypedArray> extends Vec {
 
   constructor(data_type: DataType, values: T, validity: Bitmap | null = null) {
     super();
-    this.typeId = `PrimitiveVec<${data_type.typeId}>`;
+    this.variant = `PrimitiveVec<${data_type.variant}>`;
     this.__data_type = data_type;
     this.#validity = validity;
     this.#values = values;
@@ -93,6 +93,4 @@ export namespace PrimitiveVec {
 
     return new PrimitiveVec(data_type, values, validity);
   }
-
-
 }

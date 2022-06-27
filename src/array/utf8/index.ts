@@ -3,7 +3,7 @@ import { Bitmap } from "../../bitmap/immutable";
 import { DataType } from "../../datatypes/index";
 import { ArrowError } from "../../error";
 import { Offset } from "../../types/offset";
-import { unwrap } from "jsarrow/src/util/fp";
+import { unwrap } from "../../util/fp";
 
 type OffsetType<O> = O extends Offset.I32 ? Int32Array : BigInt64Array;
 
@@ -102,7 +102,7 @@ export abstract class Utf8Vec<O extends Offset> extends Vec implements Vec {
 }
 
 class Utf8Impl extends Utf8Vec<Offset.I32> {
-  protected typeId = "Utf8Vec";
+  protected variant = "Utf8Vec";
 
   protected default_data_type(): DataType {
     return DataType.Utf8;
@@ -110,7 +110,7 @@ class Utf8Impl extends Utf8Vec<Offset.I32> {
 }
 
 class LargeUtf8Impl extends Utf8Vec<Offset.I64> {
-  protected typeId = "LargeUtf8Vec";
+  protected variant = "LargeUtf8Vec";
 
   protected default_data_type(): DataType {
     return DataType.LargeUtf8;

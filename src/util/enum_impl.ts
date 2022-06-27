@@ -1,19 +1,40 @@
-const toJson = (inner, variant) => {
-  if (inner?.inner || inner?.inner === 0) {
-    return variant(inner);
-  } else if (Array.isArray(inner)) {
-    return inner.map((v) => toJson(v, variant));
-  } else if (typeof inner === "boolean") {
-    return inner;
-  } else {
-    return null;
-  }
-};
 
 export abstract class FunctionalEnum {
-  protected __inner: { inner: number; data: any };
-  public identity: string;
-  #variants;
+  protected abstract identity: string;
+  protected abstract variant: string;
+  protected abstract inner: any;
+  toString() {
+    return `${this.identity}.${this.variant}`;
+  }
+
+  toJSON() {
+    const inner = (this as any).inner;
+    if (inner) {
+      return {
+        [this.identity]: {
+          variant: this.variant,
+          inner,
+        },
+      };
+    } else {
+      return {
+        [this.identity]: {
+          variant: this.variant,
+        },
+      };
+    }
+  }
+  equals<T extends FunctionalEnum>(other: T) {
+    return (
+      this.identity === other.identity &&
+      this.variant === other.variant &&
+      JSON.stringify((this as any).inner) ===
+        JSON.stringify((other as any).inner)
+    );
+  }
+  [Symbol.for("nodejs.util.inspect.custom")]() {
+    return this.toJSON();
+  }
   public static match<T extends FunctionalEnum, ReturnType>(
     _enum: T,
     matchers: {
@@ -21,12 +42,9 @@ export abstract class FunctionalEnum {
     },
     otherwise?
   ): ReturnType {
-    let variant = _enum.#variants(_enum.__inner);
+    let variant = _enum.variant;
 
-    if (typeof variant !== "string") {
-      variant = Object.keys(variant)[0];
-    }
-    const inner_data = _enum?.__inner?.data ?? [];
+    const inner_data = _enum.inner ?? [];
     const match = matchers[variant];
     if (!match) {
       if (!otherwise) {
@@ -42,55 +60,4 @@ export abstract class FunctionalEnum {
       return match;
     }
   }
-
-  constructor(inner, identity, variants) {
-    this.__inner = inner;
-    this.identity = identity;
-    this.#variants =
-      variants instanceof Function ? variants : ({ inner }) => variants[inner];
-  }
-
-  get inner() {
-    return this.__inner.inner;
-  }
-  get typeId() {
-    let variant = toJson(this.__inner, this.#variants);
-    if (typeof variant !== "string") {
-      console.log("nested variant", variant);
-      variant = Object.keys(variant)[0];
-    }
-    return variant;
-  }
-
-  equals<T extends FunctionalEnum>(other: T) {
-    return (
-      this.identity === other.identity &&
-      this.__inner.inner === other.__inner.inner &&
-      JSON.stringify(this.__inner.data) === JSON.stringify(other.__inner.data)
-    );
-  }
-
-  toString() {
-    let variant = this.typeId;
-
-    return `${this.identity}.${variant}`;
-  }
-
-  toJSON() {
-    const variant = toJson(this.__inner, this.#variants);
-
-    return {
-      [this.identity]: variant,
-    };
-  }
-
-  [Symbol.for("nodejs.util.inspect.custom")]() {
-    return this.toJSON();
-  }
-
-  protected static [Symbol.toStringTag] = (() => {
-    return {
-      hello: "ello",
-    };
-  })();
 }

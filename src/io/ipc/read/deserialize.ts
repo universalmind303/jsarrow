@@ -1,127 +1,116 @@
-import { Field } from "jsarrow/datatypes/field";
-import { BodyCompression, MetadataVersion } from "jsarrow/fb/Message";
-import { IpcField } from "jsarrow/src/io/ipc/index";
+import { Field } from "../../../datatypes/field";
+import { BodyCompression, MetadataVersion } from "../../../fb/Message";
+import { IpcField } from "../../../io/ipc/index";
 import {
-  read_boolean,
-  read_list,
-  read_null,
-  read_primitive,
-  read_utf8,
+  deserializeBoolean,
+  deserializeList,
+  deserializeNull,
+  deserializePrimitive,
+  deserializeUtf8,
 } from "../read/array";
-import { Dictionaries, IpcBuffer, Node } from "jsarrow/src/io/ipc/read/index";
-import { FunctionalEnum } from "../../../util/enum_impl";
+import { Dictionaries, IpcBuffer, Node } from "../../../io/ipc/read/index";
 import { Reader } from "../../../util/file-reader";
 import { unwrap } from "../../../util/fp";
 import { Vec } from "../../../array/index";
-import { PrimitiveType } from "../../../types/index";
 import { Offset } from "../../../types/offset";
-import { PhysicalType } from "jsarrow/datatypes/physical_type";
+import { DataType } from "../../../datatypes/index";
+import { readBitmap, readBuffer, readValidity } from "./read_basic";
 
-export function read(
-  mutable_field_nodes: Array<Node>,
-  field: Field,
-  ipc_field: IpcField,
-  mutable_buffers: Array<IpcBuffer>,
-  reader: Reader,
-  dictionaries: Dictionaries,
-  block_offset: bigint,
-  is_little_endian: boolean,
-  compression: BodyCompression | null,
-  version: MetadataVersion
-): Vec {
-  let data_type = field.datatype;
-  let physical_type = data_type.toPhysicalType();
-  return FunctionalEnum.match<PhysicalType, Vec>(
-    physical_type,
-    {
-      Null() {
-        return unwrap(read_null(mutable_field_nodes, data_type));
-      },
-      Boolean() {
+export class Deserializer {
+  mutable_field_nodes: Array<Node>;
+  field: Field;
+  ipc_field: IpcField;
+  mutable_buffers: Array<IpcBuffer>;
+  reader: Reader;
+  dictionaries: Dictionaries;
+  block_offset: bigint;
+  is_little_endian: boolean;
+  compression: BodyCompression | null;
+  version: MetadataVersion;
+  data_type: DataType;
+
+  private constructor(
+    mutable_field_nodes: Array<Node>,
+    field: Field,
+    ipc_field: IpcField,
+    mutable_buffers: Array<IpcBuffer>,
+    reader: Reader,
+    dictionaries: Dictionaries,
+    block_offset: bigint,
+    is_little_endian: boolean,
+    compression: BodyCompression | null,
+    version: MetadataVersion
+  ) {
+    this.mutable_field_nodes = mutable_field_nodes;
+    this.field = field;
+    this.ipc_field = ipc_field;
+    this.mutable_buffers = mutable_buffers;
+    this.reader = reader;
+    this.dictionaries = dictionaries;
+    this.block_offset = block_offset;
+    this.is_little_endian = is_little_endian;
+    this.compression = compression;
+    this.version = version;
+    this.data_type = this.field.datatype;
+  }
+
+  public static deserialize(
+    mutable_field_nodes: Array<Node>,
+    field: Field,
+    ipc_field: IpcField,
+    mutable_buffers: Array<IpcBuffer>,
+    reader: Reader,
+    dictionaries: Dictionaries,
+    block_offset: bigint,
+    is_little_endian: boolean,
+    compression: BodyCompression | null,
+    version: MetadataVersion
+  ): Vec {
+    const self = new Deserializer(
+      mutable_field_nodes,
+      field,
+      ipc_field,
+      mutable_buffers,
+      reader,
+      dictionaries,
+      block_offset,
+      is_little_endian,
+      compression,
+      version
+    );
+    let physical_type = self.data_type.toPhysicalType() as any;
+
+    switch (physical_type.variant) {
+      case "Null":
+        return unwrap(self.deserializeNull());
+      case "Boolean":
+        return unwrap(self.deserializeBoolean());
+      case "Primitive":
         return unwrap(
-          read_boolean(
-            mutable_field_nodes,
-            data_type,
-            mutable_buffers,
-            reader,
-            block_offset,
-            is_little_endian,
-            compression
+          self.deserializePrimitive(
+            physical_type.inner.toTypedArrayConstructor()
           )
         );
-      },
-      Primitive(primitive: PrimitiveType) {
-        return unwrap(
-          read_primitive(primitive.toTypedArrayConstructor())(
-            mutable_field_nodes,
-            data_type,
-            mutable_buffers,
-            reader,
-            block_offset,
-            is_little_endian,
-            compression
-          )
-        );
-      },
-      Utf8(_) {
-        return unwrap(
-          read_utf8(Offset.I32)(
-            mutable_field_nodes,
-            data_type,
-            mutable_buffers,
-            reader,
-            block_offset,
-            is_little_endian,
-            compression
-          )
-        );
-      },
-      LargeUtf8(_) {
-        return unwrap(
-          read_utf8(Offset.I64)(
-            mutable_field_nodes,
-            data_type,
-            mutable_buffers,
-            reader,
-            block_offset,
-            is_little_endian,
-            compression
-          )
-        );
-      },
-      List(_) {
-        return unwrap(
-          read_list(Offset.I32)(
-            mutable_field_nodes,
-            data_type,
-            ipc_field,
-            mutable_buffers,
-            reader,
-            dictionaries,
-            block_offset,
-            is_little_endian,
-            compression,
-            version
-          )
-        );
-      },
-      LargeList(_) {
-        return unwrap(
-          read_list(Offset.I64)(
-            mutable_field_nodes,
-            data_type,
-            ipc_field,
-            mutable_buffers,
-            reader,
-            dictionaries,
-            block_offset,
-            is_little_endian,
-            compression,
-            version
-          )
-        );
-      },
-    },
-    (dt) => console.log("no match for %O", dt, physical_type)
-  );
+      case "Utf8":
+        return unwrap(self.deserializeUtf8(Offset.I32));
+      case "LargeUtf8":
+        return unwrap(self.deserializeUtf8(Offset.I64));
+
+      case "List":
+        return unwrap(self.deserializeList(Offset.I32));
+      case "LargeList":
+        return unwrap(self.deserializeList(Offset.I64));
+      default:
+        return null as any;
+    }
+  }
+
+  deserializeNull = deserializeNull;
+  deserializeBoolean = deserializeBoolean;
+  deserializePrimitive = deserializePrimitive;
+  deserializeUtf8 = deserializeUtf8;
+  deserializeList = deserializeList;
+  readValidity = readValidity;
+  readBitmap = readBitmap;
+  readBuffer = readBuffer;
 }

@@ -1,49 +1,46 @@
 import assert from "assert";
-import { get_bit } from "jsarrow/src/bitmap/utils/index";
-import { DoubleEndedIterator } from "jsarrow/util/iterator";
+import { get_bit } from "../bitmap/utils/index";
+import { DoubleEndedIterator } from "../util/iterator";
 
 export class BitmapIter implements DoubleEndedIterator<boolean | null> {
-  #bytes: ArrayBuffer;
-  #index: number;
-  #end: number;
+  _bytes: ArrayBuffer;
+  _index: number;
+  _end: number;
 
-  constructor(slice: ArrayBuffer, offset: number, len: number) {
-    let bytes = slice.slice(offset / 8);
+  constructor(slice, offset: number, len: number) {
+    let bytes = slice.subarray(offset / 8);
     let idx = offset % 8;
     let end = len + idx;
     assert(end <= bytes.byteLength * 8);
 
-    this.#bytes = bytes;
-    this.#index = idx;
-    this.#end = end;
+    this._bytes = bytes;
+    this._index = idx;
+    this._end = end;
   }
 
   next(): IteratorResult<boolean, null> {
-    if (this.#index === this.#end) {
+    if (this._index === this._end) {
       return {
         done: true,
         value: null,
       };
     } else {
-      const old = this.#index;
-      this.#index += 1;
       return {
         done: false,
-        value: get_bit(this.#bytes, old),
+        value: get_bit(this._bytes, this._index++),
       };
     }
   }
   nextBack(): IteratorResult<boolean | null, null> {
-    if (this.#index === this.#end) {
+    if (this._index === this._end) {
       return {
         done: true,
         value: null,
       };
     } else {
-      this.#end -= 1;
       return {
         done: false,
-        value: get_bit(this.#bytes, this.#end),
+        value: get_bit(this._bytes, this._end--),
       };
     }
   }

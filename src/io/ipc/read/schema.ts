@@ -8,20 +8,20 @@ import {
   Int,
   Precision,
   Type,
-} from "jsarrow/src/fb/Schema";
-import { Schema as SchemaRef } from "jsarrow/src/fb/File";
-import { IntegerType } from "jsarrow/src/datatypes/physical_type";
-import { DataType, get_extension } from "jsarrow/src/datatypes/index";
-import { IpcField, IpcSchema } from "jsarrow/src/io/ipc/index";
-import { Field } from "jsarrow/src/datatypes/field";
-import type { Option } from "jsarrow/src/util/fp";
-import { Schema } from "jsarrow/src/datatypes/schema";
-import { ArrowError } from "jsarrow/src/error";
+} from "../../../fb/Schema";
+import { Schema as SchemaRef } from "../../../fb/File";
+import { IntegerType } from "../../../datatypes/physical_type";
+import { DataType } from "../../../datatypes/index";
+import { IpcField, IpcSchema } from "../../../io/ipc/index";
+import { Field } from "../../../datatypes/field";
+import type { Option } from "../../../util/fp";
+import { Schema } from "../../../datatypes/schema";
+import { ArrowError } from "../../../error";
 
 export type Extension = Option<[string, Option<string>]>;
 export type Metadata = Record<string, string>;
 
-function read_metadata(field: FieldRef): Metadata {
+function readMetadata(field: FieldRef): Metadata {
   const fldLen = field.customMetadataLength();
   let metadata: Metadata = {};
   if (fldLen > 0) {
@@ -33,7 +33,8 @@ function read_metadata(field: FieldRef): Metadata {
 
   return metadata;
 }
-function get_data_type(
+
+function getDataType(
   field: FieldRef,
   extension: Extension,
   may_be_dictionary: boolean
@@ -41,10 +42,10 @@ function get_data_type(
   let dict: DictionaryEncoding;
   if ((dict = field.dictionary()!)) {
     if (may_be_dictionary) {
-      let int = dict.indexType()!;
-      let index_type = deserialize_integer(int)!;
+      const int = dict.indexType()!;
+      const index_type = deserializeInt(int)!;
 
-      let [inner, ipc_field] = get_data_type(field, extension, false)!;
+      let [inner, ipc_field] = getDataType(field, extension, false)!;
       ipc_field.dictionaryId = dict.id();
       return [
         DataType.Dictionary(index_type, inner, dict.isOrdered()),
@@ -55,101 +56,90 @@ function get_data_type(
 
   if (extension) {
     let [name, metadata] = extension;
-    let [datatype, fields] = get_data_type(field, null, false)!;
+    let [datatype, fields] = getDataType(field, null, false)!;
     return [DataType.Extension(name, datatype, metadata!), fields];
   }
-  let type = field.typeType();
+  return fieldToDataType(field);
+}
 
-  return {
-    [Type.Null]: () => [DataType.Null, IpcField.empty()],
-    [Type.Bool]: () => [DataType.Boolean, IpcField.empty()],
-    [Type.Int]() {
-      let intType = deserialize_integer(field.type(new Int()) as Int);
-      let dtype = intType.into<DataType>(DataType);
+function fieldToDataType(field: FieldRef): [DataType, IpcField] {
+  switch (field.typeType()) {
+    case Type.Null:
+      return [DataType.Null, IpcField.empty()];
+    case Type.Bool:
+      return [DataType.Boolean, IpcField.empty()];
+    case Type.Int: {
+      const intType = deserializeInt(field.type(new Int()) as Int);
+      const dtype = intType.into<DataType>(DataType);
 
       return [dtype, IpcField.empty()];
-    },
-    [Type.FloatingPoint]() {
-      let fp: FloatingPoint = field.type(new FloatingPoint());
-      let dtype = {
-        [Precision.HALF]: DataType.Float16,
-        [Precision.SINGLE]: DataType.Float32,
-        [Precision.DOUBLE]: DataType.Float64,
-      }[fp.precision()];
+    }
+    case Type.FloatingPoint: {
+      const fp: FloatingPoint = field.type(new FloatingPoint());
+      const dtype = _precisionMapping[fp.precision()];
       return [dtype, IpcField.empty()];
-    },
-    [Type.Date]() {
-      let dt: Date = field.type(Date);
-      let dtype = {
+    }
+    case Type.Date: {
+      const dt: Date = field.type(Date);
+      const dtype = {
         [DateUnit.DAY]: DataType.Float16,
         [DateUnit.MILLISECOND]: DataType.Float32,
       }[dt.unit()];
       return [dtype, IpcField.empty()];
-    },
-    [Type.Utf8]: () => [DataType.Utf8, IpcField.empty()],
-    [Type.LargeUtf8]: () => [DataType.LargeUtf8, IpcField.empty()],
-    [Type.List]() {
-      let children_len = field.childrenLength();
+    }
+    case Type.Utf8:
+      return [DataType.Utf8, IpcField.empty()];
+    case Type.LargeUtf8:
+      return [DataType.LargeUtf8, IpcField.empty()];
+    case Type.List: {
+      const children_len = field.childrenLength();
       if (!children_len) {
         throw ArrowError.OutOfSpec("IPC: List must contain children");
       }
 
-      let inner = field.children(0);
+      const inner = field.children(0);
       if (inner === null) {
         throw ArrowError.OutOfSpec("IPC: List must contain one child");
       }
 
-      let [fld, ipc_field] = deserialize_field(inner);
+      let [fld, ipc_field] = deserializeField(inner);
       return [DataType.List(fld), { fields: [ipc_field] }];
-    },
-    [Type.LargeList]() {
-      let children_len = field.childrenLength();
+    }
+    case Type.LargeList: {
+      const children_len = field.childrenLength();
       if (!children_len) {
         throw ArrowError.OutOfSpec("IPC: List must contain children");
       }
 
-      let inner = field.children(0);
+      const inner = field.children(0);
       if (inner === null) {
         throw ArrowError.OutOfSpec("IPC: List must contain one child");
       }
 
-      let [fld, ipc_field] = deserialize_field(inner);
+      let [fld, ipc_field] = deserializeField(inner);
       return [DataType.LargeList(fld), { fields: [ipc_field] }];
-    },
-  }[type]();
+    }
+    default:
+      return null as never;
+  }
 }
 
-function deserialize_integer(int: Int): IntegerType {
-  let [bit_width, is_signed] = [int.bitWidth(), int.isSigned()];
+function deserializeInt(int: Int): IntegerType {
+  const [bit_width, is_signed] = [int.bitWidth(), int.isSigned()];
 
-  let int_type;
-
-  if (is_signed) {
-    int_type = {
-      8: IntegerType.Int8,
-      16: IntegerType.Int16,
-      32: IntegerType.Int32,
-      64: IntegerType.Int64,
-    }[bit_width] as any;
-  } else {
-    int_type = {
-      8: IntegerType.UInt8,
-      16: IntegerType.UInt16,
-      32: IntegerType.UInt32,
-      64: IntegerType.UInt64,
-    }[bit_width] as any;
-  }
-  if (!int_type) {
+  const mappings = is_signed ? _intMapping : _uIntMapping;
+  const intType = mappings[bit_width];
+  if (!intType) {
     throw new Error("IPC: indexType can only be 8, 16, 32 or 64.");
   }
-
-  return int_type;
+  return intType;
 }
-function deserialize_field(fld: FieldRef): [Field, IpcField] {
-  let metadata = read_metadata(fld);
+
+function deserializeField(fld: FieldRef): [Field, IpcField] {
+  let metadata = readMetadata(fld);
   let extension = get_extension(metadata);
 
-  let [data_type, ipc_field] = get_data_type(fld, extension, true)!;
+  let [data_type, ipc_field] = getDataType(fld, extension, true)!;
 
   let name = fld.name();
   if (name === null) {
@@ -161,34 +151,29 @@ function deserialize_field(fld: FieldRef): [Field, IpcField] {
   return [field, ipc_field];
 }
 
-export function fb_to_schema(schema: SchemaRef): [Schema, IpcSchema] {
-  let [fields, ipcFields] = Array.from(
-    { length: schema.fieldsLength() },
-    (_, k) => {
-      let f: any = schema.fields(k)!;
-      return deserialize_field(f);
-    }
-  ).reduce(
-    (acc, curr) => {
-      let [field, fields] = curr;
+export function deserializeSchema(schema: SchemaRef): [Schema, IpcSchema] {
+  const fieldsLength = schema.fieldsLength();
+  // for loops are soo much faster than map/reduce
 
-      acc[0].push(field);
-      acc[1].push(fields);
-      return acc;
-    },
-    [[], []] as [Field[], IpcField[]]
-  );
-  let isLittleEndian = {
-    [Endianness.Little]: true,
-    [Endianness.Big]: false,
-  }[schema.endianness()];
+  const fields: Field[] = Array.from({ length: fieldsLength });
+  const ipcFields: IpcField[] = Array.from({ length: fieldsLength });
 
+  for (let idx = 0; idx < fieldsLength; idx++) {
+    const f = schema.fields(idx)!;
+    const values = deserializeField(f);
+    fields[idx] = values[0];
+    ipcFields[idx] = values[1];
+  }
+
+  const isLittleEndian = _endiannessMapping[schema.endianness()];
   let metadata: Metadata = {};
-  if (schema.customMetadataLength()) {
-    for (let i = 0; i < schema.customMetadataLength(); i++) {
+  const metadataLength = schema.customMetadataLength();
+
+  if (metadataLength) {
+    for (let i = 0; i < metadataLength; i++) {
       const kv = schema.customMetadata(i)!;
-      let key = kv.key();
-      let val = kv.value();
+      const key = kv.key();
+      const val = kv.value();
       if (key && val) {
         metadata[key] = val;
       }
@@ -197,3 +182,40 @@ export function fb_to_schema(schema: SchemaRef): [Schema, IpcSchema] {
 
   return [Schema(fields, metadata), { fields: ipcFields, isLittleEndian }];
 }
+
+function get_extension(metadata: Metadata): Extension {
+  const name = metadata?.["ARROW:extension:name"];
+  if (name) {
+    const data = metadata["ARROW:extension:metadata"];
+    return [name, data];
+  } else {
+    return null;
+  }
+}
+
+// constants of type mappings. 
+
+const _intMapping = {
+  8: IntegerType.Int8,
+  16: IntegerType.Int16,
+  32: IntegerType.Int32,
+  64: IntegerType.Int64,
+};
+
+const _uIntMapping = {
+  8: IntegerType.UInt8,
+  16: IntegerType.UInt16,
+  32: IntegerType.UInt32,
+  64: IntegerType.UInt64,
+};
+
+const _precisionMapping = {
+  [Precision.HALF]: DataType.Float16,
+  [Precision.SINGLE]: DataType.Float32,
+  [Precision.DOUBLE]: DataType.Float64,
+};
+
+const _endiannessMapping = {
+  [Endianness.Little]: true,
+  [Endianness.Big]: false,
+};

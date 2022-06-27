@@ -1,4 +1,4 @@
-import { Bitmap } from "jsarrow/src/bitmap/immutable";
+import { Bitmap } from "../bitmap/immutable";
 import { Vec } from "../array/index";
 import { DataType } from "../datatypes/index";
 import { PhysicalType } from "../datatypes/physical_type";
@@ -6,7 +6,7 @@ import { ArrowError } from "../error";
 import { Result, unwrap } from "../util/fp";
 
 export class NullVec extends Vec {
-  protected typeId = "NullVec";
+  protected variant = "NullVec";
   __data_type: DataType;
   #length: number;
 
